@@ -10,6 +10,13 @@ import time
 import zipfile
 from dataclasses import dataclass
 
+from moyu_media import (
+    MetadataError,
+    build_metadata_patches,
+    iter_patched_chunks,
+    patch_to_dict,
+)
+
 DEFAULT_TZ = "Asia/Shanghai"
 DEFAULT_CHUNK = 1024 * 1024
 TIME_EXTRA_IDS = {0x5455, 0x000A, 0x5855, 0x000D}
@@ -304,7 +311,10 @@ def plan_pack(
     return plans, tz, target_ns, delta_ns
 
 
-def write_manifest(path, plans, tz_name, target_ns, delta_ns, output):
+def write_manifest(
+    path, plans, tz_name, target_ns, delta_ns, output, metadata_infos=None
+):
+    metadata_infos = metadata_infos or {}
     data = {
         "tool": "moyu-pack",
         "tz": tz_name,
@@ -318,6 +328,7 @@ def write_manifest(path, plans, tz_name, target_ns, delta_ns, output):
                 "source_mtime_ns": plan.source_mtime_ns,
                 "target_epoch": plan.target_epoch,
                 "dos": list(plan.dos),
+                "metadata": metadata_infos.get(plan.arcname),
             }
             for plan in plans
         ],
@@ -360,6 +371,7 @@ def write_zip(
     fsync=True,
     manifest_path=None,
     verify=True,
+    rewrite_metadata=True,
 ):
     output_abs = os.path.abspath(output)
     outdir = os.path.dirname(output_abs) or "."
@@ -384,6 +396,8 @@ def write_zip(
     except OSError:
         pass
     started = time.monotonic()
+    metadata_infos = {}
+    resolved_tz = resolve_timezone(tz_name)
     try:
         compression = zipfile.ZIP_DEFLATED if deflate else zipfile.ZIP_STORED
         with open(tmp_path, "wb", buffering=4 * 1024 * 1024) as fp:
@@ -395,6 +409,26 @@ def write_zip(
                 compresslevel=1 if deflate else None,
             ) as zf:
                 for plan in plans:
+                    metadata_info = None
+                    if rewrite_metadata:
+                        try:
+                            metadata_info = build_metadata_patches(
+                                plan.source, plan.target_epoch, resolved_tz
+                            )
+                        except MetadataError as exc:
+                            raise MoyuError(
+                                f"元数据改写失败: {plan.source}: {exc}"
+                            ) from exc
+                        metadata_infos[plan.arcname] = {
+                            "format": metadata_info.format,
+                            "patches": len(metadata_info.patches),
+                            "fields": [
+                                patch_to_dict(patch)
+                                for patch in metadata_info.patches
+                                if not patch.field.endswith("CRC")
+                            ],
+                            "notes": metadata_info.notes,
+                        }
                     zinfo = zipfile.ZipInfo(plan.arcname, date_time=plan.dos)
                     zinfo.compress_type = compression
                     zinfo.create_system = 3
@@ -404,14 +438,21 @@ def write_zip(
                     if deflate:
                         zinfo._compresslevel = 1
                     force_zip64 = plan.size > zipfile.ZIP64_LIMIT
-                    with open(plan.source, "rb") as src, zf.open(
+                    with zf.open(
                         zinfo, "w", force_zip64=force_zip64
                     ) as dst:
-                        while True:
-                            chunk = src.read(chunk_size)
-                            if not chunk:
-                                break
-                            dst.write(chunk)
+                        if metadata_info and metadata_info.patches:
+                            for chunk in iter_patched_chunks(
+                                plan.source, metadata_info.patches, chunk_size
+                            ):
+                                dst.write(chunk)
+                        else:
+                            with open(plan.source, "rb") as src:
+                                while True:
+                                    chunk = src.read(chunk_size)
+                                    if not chunk:
+                                        break
+                                    dst.write(chunk)
                     after = os.stat(plan.source)
                     if (
                         after.st_size != plan.size
@@ -445,7 +486,15 @@ def write_zip(
         os.replace(tmp_path, output_abs)
         tmp_path = None
         if manifest_path:
-            write_manifest(manifest_path, plans, tz_name, target_ns, delta_ns, output_abs)
+            write_manifest(
+                manifest_path,
+                plans,
+                tz_name,
+                target_ns,
+                delta_ns,
+                output_abs,
+                metadata_infos=metadata_infos,
+            )
         elapsed = time.monotonic() - started
         return {
             "ok": True,
@@ -463,6 +512,23 @@ def write_zip(
             "deflate": bool(deflate),
             "chunk_size": chunk_size,
             "verified": bool(verify),
+            "rewrite_metadata": bool(rewrite_metadata),
+            "metadata_files": sum(
+                1 for info in metadata_infos.values() if info["patches"] > 0
+            ),
+            "metadata_fields": sum(
+                len(info.get("fields", [])) for info in metadata_infos.values()
+            ),
+            "metadata_patches": sum(
+                info["patches"] for info in metadata_infos.values()
+            ),
+            "metadata_notes": sorted(
+                {
+                    note
+                    for info in metadata_infos.values()
+                    for note in info.get("notes", [])
+                }
+            ),
         }
     except (OSError, RuntimeError, zipfile.BadZipFile) as exc:
         raise MoyuError(f"写入 ZIP 失败: {exc}") from exc

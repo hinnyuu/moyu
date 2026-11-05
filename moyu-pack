@@ -19,6 +19,7 @@ from moyu_zip import (
     resolve_timezone,
     write_zip,
 )
+from moyu_media import MetadataError, build_metadata_patches
 
 
 def size_type(value):
@@ -45,6 +46,11 @@ def build_parser():
     parser.add_argument("--force", action="store_true", help="覆盖已存在的输出")
     parser.add_argument("--dry-run", action="store_true", help="只打印计划，不写 ZIP")
     parser.add_argument("--deflate", action="store_true", help="使用 deflate 压缩")
+    parser.add_argument(
+        "--keep-metadata",
+        action="store_true",
+        help="保留文件内部元数据（默认改写）",
+    )
     parser.add_argument(
         "--chunk-size",
         default=DEFAULT_CHUNK,
@@ -90,6 +96,18 @@ def print_summary(result, tz_name):
     )
     mode = "deflate" if result["deflate"] else "store"
     print(f"  模式: {mode}, 块大小: {human_size(result['chunk_size'])}")
+    if result.get("rewrite_metadata"):
+        if result["metadata_fields"]:
+            print(
+                f"  元数据: 改写 {result['metadata_fields']} 个字段 / "
+                f"{result['metadata_files']} 个文件"
+            )
+        else:
+            print("  元数据: 未发现可改写字段")
+    else:
+        print("  元数据: 保留原样")
+    for note in result.get("metadata_notes") or []:
+        print(f"  元数据提示: {note}")
     speed = result["throughput_bytes_s"] / (1024 * 1024) if result["elapsed_sec"] else 0
     print(
         f"  耗时: {result['elapsed_sec']:.2f}s, "
@@ -125,6 +143,22 @@ def main(argv=None):
     if args.dry_run:
         if not args.quiet:
             print_plan(plans, tz, args.verbose)
+            if not args.keep_metadata:
+                try:
+                    total_patches = 0
+                    for plan in plans:
+                        info = build_metadata_patches(
+                            plan.source, plan.target_epoch, tz
+                        )
+                        total_patches += sum(
+                            1
+                            for patch in info.patches
+                            if not patch.field.endswith("CRC")
+                        )
+                    print(f"元数据: 计划改写 {total_patches} 个字段")
+                except MetadataError as exc:
+                    print(f"moyu-pack: {exc}", file=sys.stderr)
+                    return 1
         return 0
 
     try:
@@ -140,6 +174,7 @@ def main(argv=None):
             fsync=not args.no_fsync,
             manifest_path=args.manifest,
             verify=True,
+            rewrite_metadata=not args.keep_metadata,
         )
     except (MoyuError, OSError) as exc:
         print(f"moyu-pack: {exc}", file=sys.stderr)
