@@ -3,7 +3,7 @@ set -euo pipefail
 export LC_ALL=C
 
 readonly PROG="${0##*/}"
-readonly VERSION="0.1.1"
+readonly VERSION="dev"
 readonly NS_PER_SEC=1000000000
 
 usage() {

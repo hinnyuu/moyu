@@ -1,39 +1,156 @@
 # moyu
 
-渲染摸鱼时间平移脚本：把已经完成、但还没提交的渲染序列“重新出炉”。
+实验性项目：把已经完成、但还没提交的渲染序列“重新出炉”。
 
-小型工作室通常用本地机器渲染，没有系统化的云渲染调度与审计。渲染完成后如果立刻提交，往往只会被安排更多任务。`moyu.sh` 把一组文件的系统时间整体向后平移，让其中最新的一帧看起来像是刚刚渲染完成，同时保留文件之间的相对先后关系和间隔。
+当前处于尝试阶段，不设版本号；等路线完全稳定后再重构一次项目，从 `v0.0.1` 重新开始。
 
-## 用法
+目前有两条路径：
+
+- `moyu.sh`：直接平移源文件的 atime / mtime，适合需要让本机文件也看起来新鲜的场景。
+- `moyu-pack` / `moyu-verify`：生成只记录 DOS mtime 的交付 ZIP，不修改源文件；解压后 ctime / btime 会自然变成解压时刻。
+
+## 交付 ZIP（当前主线）
+
+```bash
+./moyu-pack -o delivery.zip /path/to/renders
+./moyu-verify delivery.zip
+```
+
+`moyu-pack` 会：
+
+1. 读取所有源文件的 mtime，保持它们之间的相对先后和间隔。
+2. 把最新文件的 mtime 对齐到当前时刻（或 `--target` 指定的时间）。
+3. 直接写 ZIP 条目的 DOS mtime，精度 2 秒。
+4. 不修改源文件。
+5. 写完先校验，再原子改名为目标 ZIP。
+
+先预览、不写文件：
+
+```bash
+./moyu-pack -o delivery.zip --dry-run /path/to/renders
+```
+
+逐文件查看源 mtime 到目标 mtime 的映射：
+
+```bash
+./moyu-pack -o delivery.zip -v /path/to/renders
+```
+
+同时生成时间清单，便于之后校验：
+
+```bash
+./moyu-pack -o delivery.zip --manifest delivery.json /path/to/renders
+./moyu-verify --manifest delivery.json delivery.zip
+```
+
+指定目标时间：
+
+```bash
+./moyu-pack -o delivery.zip --target "2026-11-05 22:00:00" /path/to/renders
+```
+
+### 常用选项
+
+| 选项 | 说明 |
+| --- | --- |
+| `-o, --output` | 输出 ZIP 路径 |
+| `--target` | 最新文件目标时间，`now` 或 `YYYY-MM-DD HH:MM:SS` |
+| `--tz` | 时区，默认 `Asia/Shanghai` |
+| `--prefix` | ZIP 内统一前缀 |
+| `--force` | 覆盖已存在的输出 |
+| `--dry-run` | 只打印计划，不写 ZIP |
+| `--deflate` | 使用 deflate 压缩（默认 STORE） |
+| `--chunk-size` | 读写块大小，默认 `1M` |
+| `--manifest` | 输出 JSON 时间清单 |
+| `--follow-symlinks` | 跟随符号链接 |
+| `--no-fsync` | 写完不 fsync |
+| `--json` | 输出 JSON 摘要 |
+| `-v / -q` | 逐文件输出 / 只输出错误 |
+
+### 默认行为
+
+- 压缩：默认 `ZIP_STORED`，不压缩。渲染文件大多已经压缩过，deflate 收益低、CPU 开销高。
+- 时区：默认 `Asia/Shanghai`，可用 `--tz` 覆盖。
+- 目录：传入目录时，ZIP 内保留目录名作为顶层；目录内部的相对路径也保留。
+- 符号链接：默认跳过；`--follow-symlinks` 可跟随。
+- 覆盖：默认拒绝覆盖已有输出；`--force` 允许。
+- ZIP64：大文件自动启用。
+- 校验：打包后自动检查 extra field、DOS 时间、路径、加密、comment 等。
+
+### 校验器
+
+`moyu-verify` 默认严格模式：除 ZIP64 `0x0001` 外，任何 extra field 都会失败，尤其是：
+
+- `0x5455` UT（mtime / atime / creation time）
+- `0x000a` NTFS（mtime / atime / creation time）
+- `0x5855` UX
+- `0x000d` PKWARE Unix
+
+同时检查中央目录和本地文件头，避免只在其中一处藏时间字段。
+
+```bash
+./moyu-verify --require-store delivery.zip
+./moyu-verify --check-crc delivery.zip
+./moyu-verify --no-future delivery.zip
+./moyu-verify --json delivery.zip
+```
+
+### 沙箱性能基线
+
+低配沙箱（2 核、7.8GB 内存、overlayfs）实测：
+
+| 场景 | 方案 | 墙钟 | 峰值 RSS | 有效吞吐 |
+| --- | --- | --- | --- | --- |
+| 512MiB 单文件 | Python STORE，1M 块 | 1.9s | 约 20MB | 约 267MiB/s |
+| 512MiB 单文件 | `zip -0 -X` | 3.4s | 约 10MB | 约 151MiB/s |
+| 512MiB 单文件 | `dd` 复制基线 | 0.8s | 约 10MB | 约 621MiB/s |
+| 2000 × 128KiB | Python STORE，1M 块 | 1.2s | 约 19MB | 约 204MiB/s |
+| 2000 × 128KiB | `zip -0 -X` | 2.5s | 约 10MB | 约 99MiB/s |
+| 4.3GiB 单文件 | Python STORE + ZIP64 | 18.0s | — | 约 240MiB/s |
+
+这些数字只代表当前沙箱，NAS 上需要重新测；但可以看出 Python STORE 并不是性能瓶颈，反而比 `zip -0 -X` 更快，内存占用也很低。
+
+### Docker / NAS 注意事项
+
+- 容器里必须显式设置时区，否则默认 UTC 会产生 8 小时偏移：
+
+  ```bash
+  docker run --rm -e TZ=Asia/Shanghai -v /data:/data image ...
+  ```
+
+- 建议限制资源，避免打包抢占 NAS 和渲染机资源：
+
+  ```bash
+  docker run --rm \
+    --cpus 1 --memory 512m --pids-limit 128 \
+    --blkio-weight 300 --network none \
+    -e TZ=Asia/Shanghai -v /data:/data image ...
+  ```
+
+- 宿主机上可用 `nice` / `ionice` 降低优先级。
+- 打包需要与源文件等量的临时空间，因为默认 STORE；`moyu-pack` 会先检查可用空间。
+- 输出先写 `.part`，校验通过后再原子改名；中断不会留下半个目标 ZIP。
+
+### 当前限制
+
+- DOS 时间只有 2 秒精度，小于 2 秒的帧间隔会被压平。
+- DOS 时间没有时区信息；跨时区解压会按解压机本地时间解释。
+- 不写入目录条目；解压时目录由解压工具创建。
+- 不处理 EXR / TIFF / PNG / JPEG / WebP 等文件内部元数据。
+- 打包本身会读取源文件，可能更新源文件 atime；不改 mtime / ctime / btime。
+- 源文件的时间保持不变；如果老板能直接看源机器，仍然能看到真实 mtime。
+
+## moyu.sh
 
 ```bash
 ./moyu.sh /path/to/render/*.exr
-```
-
-先预览、不修改文件：
-
-```bash
 ./moyu.sh -n /path/to/render/*.exr
-```
-
-逐文件查看调整前后的时间：
-
-```bash
 ./moyu.sh -v /path/to/render/*.exr
 ```
 
-## 工作原理
+它把一组文件的 atime / mtime 整体向后平移，保持相对先后，并让最新文件落在当前时刻。atime 平移后会被限制为不超过执行时刻。
 
-1. 以纳秒精度读取所有输入文件的 atime / mtime。
-2. 找到最新的 mtime，计算它与当前时刻的差值。
-3. 给所有文件的 atime / mtime 加上同一个差值。
-4. 最新文件的 mtime 落在执行时刻，其他文件保持原来的相对间隔。
-
-访问时间在平移后会额外限制为不超过执行时刻，避免出现“未来的 atime”。代价是原本接近当前时刻的 atime 会被压到同一时刻，不再保留细微差值；mtime 的相对顺序和间隔不受影响。
-
-因为是整体加法而不是逐个改成固定值，帧与帧之间的先后顺序和间隔都会保留。重复执行也不会打乱相对关系，只会继续把整组时间推到新的“现在”。
-
-## 选项
+选项：
 
 | 选项 | 说明 |
 | --- | --- |
@@ -41,24 +158,30 @@
 | `-v, --verbose` | 显示每个文件调整前后的时间 |
 | `-q, --quiet` | 不输出结果摘要 |
 | `-h, --help` | 显示帮助 |
-| `-V, --version` | 显示版本 |
+| `-V, --version` | 显示当前开发标识 |
 
-## v1 限制
+限制：
 
-- 只调整 atime 与 mtime。Linux 下 ctime 由内核维护，执行 `touch` 后会自动变成当前时间；btime（创建时间）没有用户态标准接口可以修改，会保留原始值。
-- 不处理 EXR / TIFF / PNG / JPEG / WebP 等文件内部元数据（渲染器写入的创建时间、软件版本、帧号等）。
+- 只调整 atime / mtime；ctime 会被内核更新为执行时刻，btime 无法修改。
+- 不处理文件内部元数据。
 - 不递归目录，请用 shell 通配符展开文件。
 - 依赖 GNU coreutils 的 `stat`、`touch`、`date`。
-- 对具备时间戳取证能力的文件系统或集中式存储审计（例如 ext4 `debugfs` 查看 btime、NAS 审计日志）无效。
+
+## 测试
+
+```bash
+python3 -m unittest discover -s tests -v
+```
 
 ## Roadmap
 
+- [x] 实验性 ZIP 打包与校验原型
+- [ ] ZIP 写入性能与资源限制调优
 - [ ] 文件内部元数据改写
-- [ ] 目录批处理与递归
 - [ ] Docker 中心化部署
 - [ ] WebUI 操作
-- [ ] ZIP 打包
 - [ ] 定时通过 SFTP / FTP 投递
+- [ ] 路线稳定后重构，并从 v0.0.1 开始版本管理
 
 ## License
 
