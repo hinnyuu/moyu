@@ -3,7 +3,7 @@ set -euo pipefail
 export LC_ALL=C
 
 readonly PROG="${0##*/}"
-readonly VERSION="0.1.0"
+readonly VERSION="0.1.1"
 readonly NS_PER_SEC=1000000000
 
 usage() {
@@ -140,6 +140,9 @@ for i in "${!INPUT_FILES[@]}"; do
     new_a=$new_m
   else
     new_a=$((old_a + DELTA))
+    if ((new_a > NOW_NS)); then
+      new_a=$NOW_NS
+    fi
   fi
   new_m_ts=$(ns_to_ts "$new_m")
   new_a_ts=$(ns_to_ts "$new_a")
