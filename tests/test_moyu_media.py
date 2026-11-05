@@ -1,5 +1,6 @@
 import datetime as dt
 import hashlib
+import json
 import os
 import shutil
 import struct
@@ -166,6 +167,157 @@ class MetadataRewriteTests(unittest.TestCase):
                 self.assertEqual(
                     struct.unpack(">I", patch.old)[0], new_qt, patch.field
                 )
+
+    @unittest.skipUnless(Image is not None, "Pillow 不可用")
+    def test_png_compressed_ztxt_materialize(self):
+        base = self.root / "base.png"
+        Image.new("RGB", (16, 16), (1, 2, 3)).save(base)
+        data = base.read_bytes()
+        ihdr_length = struct.unpack(">I", data[8:12])[0]
+        insert_at = 8 + 12 + ihdr_length
+        payload = b"Date\x00\x00" + zlib.compress(b"2026/11/05 21:17:09", 6)
+        chunk = (
+            struct.pack(">I", len(payload))
+            + b"zTXt"
+            + payload
+            + struct.pack(">I", zlib.crc32(b"zTXt" + payload) & 0xFFFFFFFF)
+        )
+        source = self.root / "ztxt.png"
+        source.write_bytes(data[:insert_at] + chunk + data[insert_at:])
+        original_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+        info = moyu_media.build_metadata_patches(str(source), self.target, TZ)
+        self.assertTrue(info.requires_materialize)
+        self.assertTrue(info.records)
+        self.assertFalse(info.strict_problems)
+        archive = self.root / "ztxt.zip"
+        manifest = self.root / "ztxt.json"
+        packed = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "moyu-pack"),
+                "-o",
+                str(archive),
+                "--manifest",
+                str(manifest),
+                "--strict-metadata",
+                "-q",
+                str(source),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(packed.returncode, 0, packed.stderr)
+        self.assertEqual(
+            hashlib.sha256(source.read_bytes()).hexdigest(), original_hash
+        )
+        self.assertEqual(list(self.root.glob(".moyu-meta-*")), [])
+        manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+        target_epoch = manifest_data["entries"][0]["target_epoch"]
+        expected = target_strings(target_epoch)
+        extract_dir = self.root / "ztxt-out"
+        with zipfile.ZipFile(archive) as zf:
+            zf.extractall(extract_dir)
+        output = extract_dir / "ztxt.png"
+        current = moyu_media.build_metadata_patches(
+            str(output), target_epoch + 3600, TZ
+        )
+        self.assertTrue(current.records)
+        self.assertIn(current.records[0]["old"], expected)
+        with Image.open(output) as image:
+            image.load()
+
+    @unittest.skipUnless(
+        IMAGE_ROOT.exists() and (IMAGE_ROOT / "AVIF").exists(), "AVIF 测试集不存在"
+    )
+    def test_avif_exif_date_patch(self):
+        source = sorted((IMAGE_ROOT / "AVIF").iterdir())[0]
+        data = bytearray(source.read_bytes())
+        reader = moyu_media.FileReader(str(source))
+        try:
+            items = moyu_media.avif_items(reader)
+        finally:
+            reader.close()
+        exif_items = [
+            item for item in items.values() if item.get("type") == b"Exif"
+        ]
+        if not exif_items:
+            self.skipTest("AVIF 没有 Exif item")
+        item = exif_items[0]
+        offset, length = item["extents"][0]
+        item_offset = item["base"] + offset
+        tiff = (
+            b"MM\x00*\x00\x00\x00\x08"
+            + struct.pack(">H", 1)
+            + struct.pack(">HHI", 306, 2, 20)
+            + struct.pack(">I", 26)
+            + struct.pack(">I", 0)
+            + b"2026:11:05 21:17:09\x00"
+        )
+        exif_item = struct.pack(">I", 6) + b"Exif\x00\x00" + tiff
+        exif_item = exif_item + b"\x00" * (length - len(exif_item))
+        data[item_offset : item_offset + length] = exif_item
+        source = self.root / "dated.avif"
+        source.write_bytes(data)
+        info = moyu_media.build_metadata_patches(str(source), self.target, TZ)
+        self.assertTrue(any("AVIF Exif" in patch.field for patch in info.patches))
+        output = self.root / "dated-out.avif"
+        output.write_bytes(moyu_media.apply_patches(data, info.patches))
+        current = moyu_media.build_metadata_patches(
+            str(output), self.target + 3600, TZ
+        )
+        self.assertTrue(
+            any("AVIF Exif" in patch.field for patch in current.patches)
+        )
+
+    def test_strict_metadata_rejects_unknown_and_conflicts(self):
+        source = self.root / "unknown.bin"
+        source.write_bytes(b"not a media file")
+        old = int(dt.datetime(2025, 1, 1, tzinfo=TZ).timestamp() * 1_000_000_000)
+        os.utime(source, ns=(old, old))
+        relaxed = self.root / "relaxed.zip"
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "moyu-pack"),
+                "-o",
+                str(relaxed),
+                "-q",
+                str(source),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        strict = self.root / "strict.zip"
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "moyu-pack"),
+                "-o",
+                str(strict),
+                "--strict-metadata",
+                "-q",
+                str(source),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        conflict = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "moyu-pack"),
+                "-o",
+                str(self.root / "conflict.zip"),
+                "--keep-metadata",
+                "--strict-metadata",
+                "-q",
+                str(source),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(conflict.returncode, 0)
 
     @unittest.skipUnless(
         image_files() and all(path.exists() for path in VIDEOS), "测试集不存在"

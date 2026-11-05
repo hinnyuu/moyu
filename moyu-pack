@@ -52,6 +52,11 @@ def build_parser():
         help="保留文件内部元数据（默认改写）",
     )
     parser.add_argument(
+        "--strict-metadata",
+        action="store_true",
+        help="遇到无法确认或无法改写的元数据时直接失败",
+    )
+    parser.add_argument(
         "--chunk-size",
         default=DEFAULT_CHUNK,
         type=size_type,
@@ -108,6 +113,8 @@ def print_summary(result, tz_name):
         print("  元数据: 保留原样")
     for note in result.get("metadata_notes") or []:
         print(f"  元数据提示: {note}")
+    for problem in result.get("metadata_strict_problems") or []:
+        print(f"  元数据严格检查: {problem}")
     speed = result["throughput_bytes_s"] / (1024 * 1024) if result["elapsed_sec"] else 0
     print(
         f"  耗时: {result['elapsed_sec']:.2f}s, "
@@ -121,6 +128,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.manifest and os.path.abspath(args.manifest) == os.path.abspath(args.output):
         print("moyu-pack: --manifest 不能与 --output 相同", file=sys.stderr)
+        return 1
+    if args.keep_metadata and args.strict_metadata:
+        print("moyu-pack: --keep-metadata 与 --strict-metadata 不能同时使用", file=sys.stderr)
         return 1
     try:
         resolve_timezone(args.tz)
@@ -146,15 +156,27 @@ def main(argv=None):
             if not args.keep_metadata:
                 try:
                     total_patches = 0
+                    strict_problems = []
                     for plan in plans:
                         info = build_metadata_patches(
                             plan.source, plan.target_epoch, tz
                         )
-                        total_patches += sum(
-                            1
-                            for patch in info.patches
-                            if not patch.field.endswith("CRC")
+                        if info.records:
+                            total_patches += len(info.records)
+                        else:
+                            total_patches += sum(
+                                1
+                                for patch in info.patches
+                                if not patch.field.endswith("CRC")
+                            )
+                        strict_problems.extend(info.strict_problems)
+                    if args.strict_metadata and strict_problems:
+                        print(
+                            "moyu-pack: 严格元数据检查失败: "
+                            + "; ".join(sorted(set(strict_problems))),
+                            file=sys.stderr,
                         )
+                        return 1
                     print(f"元数据: 计划改写 {total_patches} 个字段")
                 except MetadataError as exc:
                     print(f"moyu-pack: {exc}", file=sys.stderr)
@@ -175,6 +197,7 @@ def main(argv=None):
             manifest_path=args.manifest,
             verify=True,
             rewrite_metadata=not args.keep_metadata,
+            strict_metadata=args.strict_metadata,
         )
     except (MoyuError, OSError) as exc:
         print(f"moyu-pack: {exc}", file=sys.stderr)

@@ -14,6 +14,7 @@ from moyu_media import (
     MetadataError,
     build_metadata_patches,
     iter_patched_chunks,
+    materialize_metadata,
     patch_to_dict,
 )
 
@@ -372,6 +373,7 @@ def write_zip(
     manifest_path=None,
     verify=True,
     rewrite_metadata=True,
+    strict_metadata=False,
 ):
     output_abs = os.path.abspath(output)
     outdir = os.path.dirname(output_abs) or "."
@@ -397,6 +399,7 @@ def write_zip(
         pass
     started = time.monotonic()
     metadata_infos = {}
+    materialized_files = []
     resolved_tz = resolve_timezone(tz_name)
     try:
         compression = zipfile.ZIP_DEFLATED if deflate else zipfile.ZIP_STORED
@@ -410,6 +413,9 @@ def write_zip(
             ) as zf:
                 for plan in plans:
                     metadata_info = None
+                    materialized = None
+                    content_source = plan.source
+                    content_size = plan.size
                     if rewrite_metadata:
                         try:
                             metadata_info = build_metadata_patches(
@@ -419,15 +425,44 @@ def write_zip(
                             raise MoyuError(
                                 f"元数据改写失败: {plan.source}: {exc}"
                             ) from exc
+                        if strict_metadata and metadata_info.strict_problems:
+                            raise MoyuError(
+                                "严格元数据检查失败: "
+                                f"{plan.source}: "
+                                + "; ".join(metadata_info.strict_problems)
+                            )
+                        if metadata_info.requires_materialize:
+                            try:
+                                materialized = materialize_metadata(
+                                    plan.source,
+                                    metadata_info,
+                                    plan.target_epoch,
+                                    resolved_tz,
+                                    outdir,
+                                )
+                            except MetadataError as exc:
+                                raise MoyuError(
+                                    f"元数据重建失败: {plan.source}: {exc}"
+                                ) from exc
+                            if not materialized:
+                                raise MoyuError(
+                                    f"元数据重建未生成文件: {plan.source}"
+                                )
+                            materialized_files.append(materialized)
+                            content_source = materialized
+                            content_size = os.path.getsize(materialized)
+                        fields = metadata_info.records or [
+                            patch_to_dict(patch)
+                            for patch in metadata_info.patches
+                            if not patch.field.endswith("CRC")
+                        ]
                         metadata_infos[plan.arcname] = {
                             "format": metadata_info.format,
                             "patches": len(metadata_info.patches),
-                            "fields": [
-                                patch_to_dict(patch)
-                                for patch in metadata_info.patches
-                                if not patch.field.endswith("CRC")
-                            ],
+                            "fields": fields,
                             "notes": metadata_info.notes,
+                            "strict_problems": metadata_info.strict_problems,
+                            "materialized": bool(materialized),
                         }
                     zinfo = zipfile.ZipInfo(plan.arcname, date_time=plan.dos)
                     zinfo.compress_type = compression
@@ -437,17 +472,24 @@ def write_zip(
                     zinfo.comment = b""
                     if deflate:
                         zinfo._compresslevel = 1
-                    force_zip64 = plan.size > zipfile.ZIP64_LIMIT
+                    force_zip64 = content_size > zipfile.ZIP64_LIMIT
                     with zf.open(
                         zinfo, "w", force_zip64=force_zip64
                     ) as dst:
-                        if metadata_info and metadata_info.patches:
+                        if materialized:
+                            with open(content_source, "rb") as src:
+                                while True:
+                                    chunk = src.read(chunk_size)
+                                    if not chunk:
+                                        break
+                                    dst.write(chunk)
+                        elif metadata_info and metadata_info.patches:
                             for chunk in iter_patched_chunks(
                                 plan.source, metadata_info.patches, chunk_size
                             ):
                                 dst.write(chunk)
                         else:
-                            with open(plan.source, "rb") as src:
+                            with open(content_source, "rb") as src:
                                 while True:
                                     chunk = src.read(chunk_size)
                                     if not chunk:
@@ -514,7 +556,7 @@ def write_zip(
             "verified": bool(verify),
             "rewrite_metadata": bool(rewrite_metadata),
             "metadata_files": sum(
-                1 for info in metadata_infos.values() if info["patches"] > 0
+                1 for info in metadata_infos.values() if info.get("fields")
             ),
             "metadata_fields": sum(
                 len(info.get("fields", [])) for info in metadata_infos.values()
@@ -529,10 +571,22 @@ def write_zip(
                     for note in info.get("notes", [])
                 }
             ),
+            "metadata_strict_problems": sorted(
+                {
+                    problem
+                    for info in metadata_infos.values()
+                    for problem in info.get("strict_problems", [])
+                }
+            ),
         }
     except (OSError, RuntimeError, zipfile.BadZipFile) as exc:
         raise MoyuError(f"写入 ZIP 失败: {exc}") from exc
     finally:
+        for materialized in materialized_files:
+            try:
+                os.unlink(materialized)
+            except OSError:
+                pass
         if tmp_path and os.path.exists(tmp_path):
             try:
                 os.unlink(tmp_path)

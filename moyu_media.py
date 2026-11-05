@@ -2,6 +2,7 @@ import datetime as dt
 import os
 import re
 import struct
+import tempfile
 import zlib
 from dataclasses import dataclass, field
 
@@ -45,6 +46,9 @@ class MetadataInfo:
     format: str
     patches: list = field(default_factory=list)
     notes: list = field(default_factory=list)
+    strict_problems: list = field(default_factory=list)
+    requires_materialize: bool = False
+    records: list = field(default_factory=list)
 
 
 @dataclass
@@ -214,12 +218,87 @@ def exr_info(reader, target_epoch, tz):
     return MetadataInfo("exr", patches)
 
 
+def split_cstring(data, offset=0):
+    index = data.find(b"\x00", offset)
+    if index < 0:
+        return None, None
+    return data[offset:index], index + 1
+
+
+def text_records(label, text, target_epoch, tz):
+    records = []
+    for match in DATE_RE.finditer(text):
+        old = match.group(0)
+        new = target_string(old, target_epoch, tz)
+        if new is None:
+            raise MetadataError(f"{label}: 无法生成等长目标时间")
+        records.append(
+            {
+                "field": label,
+                "old": old.decode("ascii", "replace"),
+                "new": new.decode("ascii", "replace"),
+            }
+        )
+    return records
+
+
+def replace_text_dates(text, target_epoch, tz, label):
+    records = []
+    chunks = []
+    last = 0
+    for match in DATE_RE.finditer(text):
+        old = match.group(0)
+        new = target_string(old, target_epoch, tz)
+        if new is None:
+            raise MetadataError(f"{label}: 无法生成等长目标时间")
+        chunks.append(text[last : match.start()])
+        chunks.append(new)
+        records.append(
+            {
+                "field": label,
+                "old": old.decode("ascii", "replace"),
+                "new": new.decode("ascii", "replace"),
+            }
+        )
+        last = match.end()
+    if not records:
+        return text, []
+    chunks.append(text[last:])
+    return b"".join(chunks), records
+
+
+def parse_itxt(data):
+    keyword, cursor = split_cstring(data, 0)
+    if keyword is None or cursor is None or cursor + 2 > len(data):
+        return None
+    flag = data[cursor]
+    method = data[cursor + 1]
+    cursor += 2
+    language, cursor = split_cstring(data, cursor)
+    if language is None or cursor is None:
+        return None
+    translated, cursor = split_cstring(data, cursor)
+    if translated is None or cursor is None:
+        return None
+    return keyword, flag, method, language, translated, data[cursor:], cursor
+
+
+def parse_ztxt(data):
+    keyword, cursor = split_cstring(data, 0)
+    if keyword is None or cursor is None or cursor >= len(data):
+        return None
+    return keyword, data[cursor], data[cursor + 1 :]
+
+
 def png_info(reader, target_epoch, tz):
     if reader.read(0, 8) != PNG_SIG:
         return None
     position = 8
     patches = []
     notes = []
+    strict_problems = []
+    requires_materialize = False
+    compressed_records = []
     date_keywords = {
         b"date",
         b"creation time",
@@ -264,45 +343,70 @@ def png_info(reader, target_epoch, tz):
                     for patch in tiff
                 )
             elif chunk_type == b"iTXt":
-                if data.count(b"\x00") >= 3:
-                    keyword, rest = data.split(b"\x00", 1)
-                    compressed = rest[0] if rest else 0
-                    rest = rest[2:] if len(rest) >= 2 else b""
-                    if b"\x00" in rest:
-                        language, rest = rest.split(b"\x00", 1)
-                        if b"\x00" in rest:
-                            translated, text = rest.split(b"\x00", 1)
-                            text_offset = (
-                                len(keyword)
-                                + 1
-                                + 2
-                                + len(language)
-                                + 1
-                                + len(translated)
-                                + 1
-                            )
-                            if compressed == 0:
-                                for match in DATE_RE.finditer(text):
-                                    old = match.group(0)
-                                    new = target_string(old, target_epoch, tz)
-                                    if new is None:
-                                        raise MetadataError(
-                                            f"iTXt {keyword!r}: 无法生成等长目标时间"
-                                        )
-                                    relative.append(
-                                        (
-                                            text_offset + match.start(),
-                                            old,
-                                            new,
-                                            f"iTXt {keyword.decode('latin1')}",
-                                        )
-                                    )
-                            else:
-                                notes.append(
-                                    f"iTXt {keyword.decode('latin1')} 已压缩，跳过"
+                parsed = parse_itxt(data)
+                if parsed is None:
+                    notes.append("iTXt 结构无法解析")
+                    strict_problems.append("iTXt 结构无法解析")
+                else:
+                    keyword, flag, method, language, translated, text, text_offset = parsed
+                    label = f"iTXt {keyword.decode('latin1')}"
+                    if flag == 0:
+                        for match in DATE_RE.finditer(text):
+                            old = match.group(0)
+                            new = target_string(old, target_epoch, tz)
+                            if new is None:
+                                raise MetadataError(f"{label}: 无法生成等长目标时间")
+                            relative.append(
+                                (
+                                    text_offset + match.start(),
+                                    old,
+                                    new,
+                                    label,
                                 )
+                            )
+                    else:
+                        if method != 0:
+                            notes.append(f"{label} 压缩方法 {method} 不支持")
+                            strict_problems.append(f"{label} 压缩方法不支持")
+                        else:
+                            try:
+                                raw = zlib.decompress(text)
+                            except zlib.error as exc:
+                                notes.append(f"{label} 解压失败: {exc}")
+                                strict_problems.append(f"{label} 解压失败")
+                            else:
+                                _, records = replace_text_dates(
+                                    raw, target_epoch, tz, label
+                                )
+                                if records:
+                                    requires_materialize = True
+                                    compressed_records.extend(records)
+                                    notes.append(f"{label} 已压缩，将重建 chunk")
             elif chunk_type == b"zTXt":
-                notes.append("zTXt 已压缩，跳过")
+                parsed = parse_ztxt(data)
+                if parsed is None:
+                    notes.append("zTXt 结构无法解析")
+                    strict_problems.append("zTXt 结构无法解析")
+                else:
+                    keyword, method, compressed = parsed
+                    label = f"zTXt {keyword.decode('latin1')}"
+                    if method != 0:
+                        notes.append(f"{label} 压缩方法 {method} 不支持")
+                        strict_problems.append(f"{label} 压缩方法不支持")
+                    else:
+                        try:
+                            raw = zlib.decompress(compressed)
+                        except zlib.error as exc:
+                            notes.append(f"{label} 解压失败: {exc}")
+                            strict_problems.append(f"{label} 解压失败")
+                        else:
+                            _, records = replace_text_dates(
+                                raw, target_epoch, tz, label
+                            )
+                            if records:
+                                requires_materialize = True
+                                compressed_records.extend(records)
+                                notes.append(f"{label} 已压缩，将重建 chunk")
             if relative:
                 for offset, old, new, label in relative:
                     patches.append(Patch(data_offset + offset, old, new, label))
@@ -321,7 +425,173 @@ def png_info(reader, target_epoch, tz):
                     Patch(crc_offset, old_crc, new_crc, f"{chunk_type.decode()} CRC")
                 )
         position = crc_offset + 4
-    return MetadataInfo("png", patches, notes)
+    records = []
+    if requires_materialize:
+        records = [
+            patch_to_dict(patch)
+            for patch in patches
+            if not patch.field.endswith("CRC")
+        ]
+        records.extend(compressed_records)
+    return MetadataInfo(
+        "png",
+        patches,
+        notes,
+        strict_problems,
+        requires_materialize,
+        records,
+    )
+
+
+def rewrite_png_chunk(chunk_type, data, target_epoch, tz):
+    if chunk_type == b"tEXt":
+        keyword, text = split_cstring(data, 0)
+        if keyword is None:
+            return None
+        new_text, _ = replace_text_dates(
+            text, target_epoch, tz, f"tEXt {keyword.decode('latin1')}"
+        )
+        if new_text == text:
+            return None
+        return keyword + b"\x00" + new_text
+    if chunk_type == b"zTXt":
+        parsed = parse_ztxt(data)
+        if parsed is None:
+            return None
+        keyword, method, compressed = parsed
+        if method != 0:
+            raise MetadataError(f"zTXt {keyword!r}: 不支持的压缩方法 {method}")
+        raw = zlib.decompress(compressed)
+        new_text, _ = replace_text_dates(
+            raw, target_epoch, tz, f"zTXt {keyword.decode('latin1')}"
+        )
+        if new_text == raw:
+            return None
+        return keyword + b"\x00" + bytes([method]) + zlib.compress(new_text, 6)
+    if chunk_type == b"iTXt":
+        parsed = parse_itxt(data)
+        if parsed is None:
+            return None
+        keyword, flag, method, language, translated, text, _ = parsed
+        if flag == 0:
+            new_text, _ = replace_text_dates(
+                text, target_epoch, tz, f"iTXt {keyword.decode('latin1')}"
+            )
+            if new_text == text:
+                return None
+            return (
+                keyword
+                + b"\x00"
+                + bytes([flag, method])
+                + language
+                + b"\x00"
+                + translated
+                + b"\x00"
+                + new_text
+            )
+        if method != 0:
+            raise MetadataError(f"iTXt {keyword!r}: 不支持的压缩方法 {method}")
+        raw = zlib.decompress(text)
+        new_text, _ = replace_text_dates(
+            raw, target_epoch, tz, f"iTXt {keyword.decode('latin1')}"
+        )
+        if new_text == raw:
+            return None
+        return (
+            keyword
+            + b"\x00"
+            + bytes([flag, method])
+            + language
+            + b"\x00"
+            + translated
+            + b"\x00"
+            + zlib.compress(new_text, 6)
+        )
+    if chunk_type == b"eXIf":
+        tiff = tiff_info(BytesReader(data), target_epoch, tz, "eXIf")
+        if not tiff:
+            return None
+        return apply_patches(data, tiff)
+    return None
+
+
+def write_png_chunk(output, chunk_type, data):
+    output.write(struct.pack(">I", len(data)))
+    output.write(chunk_type)
+    output.write(data)
+    output.write(
+        struct.pack(">I", zlib.crc32(chunk_type + data) & 0xFFFFFFFF)
+    )
+
+
+def copy_exact(source, output, size, chunk_size=1024 * 1024):
+    remaining = size
+    while remaining:
+        data = source.read(min(chunk_size, remaining))
+        if not data:
+            raise MetadataError("PNG chunk 数据不完整")
+        output.write(data)
+        remaining -= len(data)
+
+
+def materialize_png(path, target_epoch, tz, dest_dir):
+    file_descriptor, temp_path = tempfile.mkstemp(
+        prefix=".moyu-meta-", suffix=".png", dir=dest_dir
+    )
+    os.close(file_descriptor)
+    try:
+        os.chmod(temp_path, 0o644)
+    except OSError:
+        pass
+    try:
+        with open(path, "rb") as source, open(temp_path, "wb") as output:
+            signature = source.read(8)
+            if signature != PNG_SIG:
+                raise MetadataError("PNG 签名不正确")
+            output.write(signature)
+            while True:
+                header = source.read(8)
+                if len(header) != 8:
+                    raise MetadataError("PNG chunk 头部不完整")
+                length, chunk_type = struct.unpack(">I4s", header)
+                if chunk_type in (b"tEXt", b"iTXt", b"zTXt", b"eXIf"):
+                    data = source.read(length)
+                    if len(data) != length:
+                        raise MetadataError("PNG chunk 数据不完整")
+                    crc = source.read(4)
+                    if len(crc) != 4:
+                        raise MetadataError("PNG chunk CRC 不完整")
+                    new_data = rewrite_png_chunk(
+                        chunk_type, data, target_epoch, tz
+                    )
+                    if new_data is None:
+                        output.write(header)
+                        output.write(data)
+                        output.write(crc)
+                    else:
+                        write_png_chunk(output, chunk_type, new_data)
+                else:
+                    output.write(header)
+                    copy_exact(source, output, length)
+                    crc = source.read(4)
+                    if len(crc) != 4:
+                        raise MetadataError("PNG chunk CRC 不完整")
+                    output.write(crc)
+                if chunk_type == b"IEND":
+                    break
+        return temp_path
+    except Exception:
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+        raise
+
+
+def materialize_metadata(path, info, target_epoch, tz, dest_dir):
+    if info.format == "png" and info.requires_materialize:
+        return materialize_png(path, target_epoch, tz, dest_dir)
+    return None
 
 
 def tiff_info(reader, target_epoch, tz, label):
@@ -718,28 +988,235 @@ def find_bytes(reader, needle, chunk_size=1024 * 1024):
     return -1
 
 
+def read_box(reader, position, limit):
+    if position + 8 > limit:
+        raise MetadataError("BMFF box 头部不完整")
+    size = struct.unpack(">I", reader.read(position, 4))[0]
+    box_type = reader.read(position + 4, 4)
+    header = 8
+    if size == 1:
+        size = struct.unpack(">Q", reader.read(position + 8, 8))[0]
+        header = 16
+    elif size == 0:
+        size = limit - position
+    if size < header or position + size > limit:
+        raise MetadataError("BMFF box 尺寸非法")
+    return box_type, position + header, position + size
+
+
+def iter_boxes(reader, start, end):
+    position = start
+    while position + 8 <= end:
+        box_type, body, box_end = read_box(reader, position, end)
+        yield box_type, body, box_end
+        position = box_end
+
+
+def read_box_cstring(reader, position, limit):
+    data = bytearray()
+    while position < limit:
+        char = reader.read(position, 1)
+        position += 1
+        if char == b"\x00":
+            return bytes(data), position
+        data += char
+    raise MetadataError("BMFF 字符串未终止")
+
+
+def read_uint(reader, position, size):
+    if size == 0:
+        return 0, position
+    return int.from_bytes(reader.read(position, size), "big"), position + size
+
+
+def avif_items(reader):
+    meta = None
+    for box_type, body, box_end in iter_boxes(reader, 0, reader.size):
+        if box_type == b"meta":
+            meta = (body + 4, box_end)
+            break
+    if meta is None:
+        raise MetadataError("AVIF 缺少 meta box")
+    iinf = None
+    iloc = None
+    for box_type, body, box_end in iter_boxes(reader, meta[0], meta[1]):
+        if box_type == b"iinf":
+            iinf = (body, box_end)
+        elif box_type == b"iloc":
+            iloc = (body, box_end)
+    if iinf is None or iloc is None:
+        raise MetadataError("AVIF 缺少 iinf/iloc")
+
+    version = reader.read(iinf[0], 1)[0]
+    position = iinf[0] + 4
+    if version == 0:
+        item_count = struct.unpack(">H", reader.read(position, 2))[0]
+        position += 2
+    else:
+        item_count = struct.unpack(">I", reader.read(position, 4))[0]
+        position += 4
+    items = {}
+    for box_type, body, box_end in iter_boxes(reader, position, iinf[1]):
+        if box_type != b"infe":
+            continue
+        infe_version = reader.read(body, 1)[0]
+        cursor = body + 4
+        if infe_version in (0, 1):
+            item_id = struct.unpack(">H", reader.read(cursor, 2))[0]
+            cursor += 4
+            item_type = None
+        else:
+            if infe_version == 3:
+                item_id = struct.unpack(">I", reader.read(cursor, 4))[0]
+                cursor += 4
+            else:
+                item_id = struct.unpack(">H", reader.read(cursor, 2))[0]
+                cursor += 2
+            cursor += 2
+            item_type = reader.read(cursor, 4)
+            cursor += 4
+        _, cursor = read_box_cstring(reader, cursor, box_end)
+        content_type = b""
+        if item_type == b"mime" or (item_type is None and cursor < box_end):
+            content_type, cursor = read_box_cstring(reader, cursor, box_end)
+            if cursor < box_end:
+                read_box_cstring(reader, cursor, box_end)
+        items[item_id] = {
+            "type": item_type,
+            "content_type": content_type,
+            "construction": 0,
+            "base": 0,
+            "extents": [],
+        }
+
+    version = reader.read(iloc[0], 1)[0]
+    position = iloc[0] + 4
+    first = reader.read(position, 1)[0]
+    position += 1
+    offset_size = first >> 4
+    length_size = first & 0x0F
+    second = reader.read(position, 1)[0]
+    position += 1
+    base_size = second >> 4
+    index_size = second & 0x0F
+    if version < 2:
+        iloc_count = struct.unpack(">H", reader.read(position, 2))[0]
+        position += 2
+    else:
+        iloc_count = struct.unpack(">I", reader.read(position, 4))[0]
+        position += 4
+    for _ in range(iloc_count):
+        if version < 2:
+            item_id = struct.unpack(">H", reader.read(position, 2))[0]
+            position += 2
+        else:
+            item_id = struct.unpack(">I", reader.read(position, 4))[0]
+            position += 4
+        construction = 0
+        if version in (1, 2):
+            construction = struct.unpack(">H", reader.read(position, 2))[0] & 0x0F
+            position += 2
+        position += 2
+        base_offset, position = read_uint(reader, position, base_size)
+        extent_count = struct.unpack(">H", reader.read(position, 2))[0]
+        position += 2
+        extents = []
+        for _ in range(extent_count):
+            if version >= 1 and index_size:
+                _, position = read_uint(reader, position, index_size)
+            extent_offset, position = read_uint(reader, position, offset_size)
+            extent_length, position = read_uint(reader, position, length_size)
+            extents.append((extent_offset, extent_length))
+        item = items.setdefault(item_id, {})
+        item["construction"] = construction
+        item["base"] = base_offset
+        item["extents"] = extents
+    return items
+
+
 def avif_info(reader, target_epoch, tz, path):
+    patches = []
+    notes = []
+    strict_problems = []
+    try:
+        items = avif_items(reader)
+    except Exception as exc:
+        items = None
+        notes.append(f"AVIF iinf/iloc 解析失败: {exc}")
+        strict_problems.append("AVIF 元数据结构无法解析")
+    if items is not None:
+        for item in items.values():
+            item_type = item.get("type")
+            content_type = item.get("content_type") or b""
+            if item.get("construction", 0) != 0:
+                notes.append("AVIF idat construction_method 暂不支持")
+                strict_problems.append("AVIF idat 元数据无法改写")
+                continue
+            extents = item.get("extents") or []
+            if len(extents) != 1:
+                notes.append("AVIF 元数据 extent 数量不为 1，跳过")
+                strict_problems.append("AVIF 多 extent 元数据无法改写")
+                continue
+            extent_offset, extent_length = extents[0]
+            data_offset = item.get("base", 0) + extent_offset
+            if item_type == b"Exif":
+                data = reader.read(data_offset, extent_length)
+                if data[:6] == b"Exif\x00\x00":
+                    tiff_data = data[6:]
+                    tiff_base = data_offset + 6
+                elif len(data) >= 10 and data[4:10] == b"Exif\x00\x00":
+                    tiff_offset = int.from_bytes(data[:4], "big")
+                    tiff_base = data_offset + 4 + tiff_offset
+                    tiff_data = data[4 + tiff_offset :]
+                else:
+                    tiff_data = data
+                    tiff_base = data_offset
+                tiff = tiff_info(BytesReader(tiff_data), target_epoch, tz, "AVIF Exif")
+                patches.extend(
+                    Patch(tiff_base + patch.offset, patch.old, patch.new, patch.field)
+                    for patch in tiff
+                )
+            elif item_type == b"mime" and (
+                b"rdf+xml" in content_type or b"XMP" in content_type
+            ):
+                data = reader.read(data_offset, extent_length)
+                patches.extend(
+                    string_patches(data_offset, data, target_epoch, tz, "AVIF XMP")
+                )
+        return MetadataInfo("avif", patches, notes, strict_problems)
+
     try:
         from PIL import Image
     except ImportError:
-        return MetadataInfo("avif", [], ["未安装 Pillow，跳过 AVIF Exif 扫描"])
+        notes.append("未安装 Pillow，AVIF 回退扫描不可用")
+        strict_problems.append("AVIF Exif 无法确认")
+        return MetadataInfo("avif", [], notes, strict_problems)
     try:
         with Image.open(path) as image:
             exif = image.info.get("exif")
     except Exception as exc:
-        return MetadataInfo("avif", [], [f"无法读取 AVIF Exif: {exc}"])
+        notes.append(f"无法读取 AVIF Exif: {exc}")
+        strict_problems.append("AVIF Exif 无法读取")
+        return MetadataInfo("avif", [], notes, strict_problems)
     if not exif:
-        return MetadataInfo("avif", [])
+        return MetadataInfo("avif", [], notes, strict_problems)
     index = find_bytes(reader, exif)
     if index < 0:
-        return MetadataInfo("avif", [], ["AVIF Exif 未在文件中找到，跳过"])
+        notes.append("AVIF Exif 未在文件中找到，跳过")
+        strict_problems.append("AVIF Exif 未定位")
+        return MetadataInfo("avif", [], notes, strict_problems)
     tiff_data = exif[6:] if exif.startswith(b"Exif\x00\x00") else exif
     tiff = tiff_info(BytesReader(tiff_data), target_epoch, tz, "AVIF Exif")
     patches = [
-        Patch(index + (6 if exif.startswith(b"Exif\x00\x00") else 0) + patch.offset, patch.old, patch.new, patch.field)
+        Patch(
+            index + (6 if exif.startswith(b"Exif\x00\x00") else 0) + patch.offset,
+            patch.old,
+            patch.new,
+            patch.field,
+        )
         for patch in tiff
     ]
-    return MetadataInfo("avif", patches)
+    return MetadataInfo("avif", patches, notes, strict_problems)
 
 
 def detect_format(path):
@@ -766,7 +1243,12 @@ def detect_format(path):
 def build_metadata_patches(path, target_epoch, tz):
     format_name = detect_format(path)
     if not format_name:
-        return MetadataInfo("unknown", [], ["未识别的文件格式"])
+        return MetadataInfo(
+            "unknown",
+            [],
+            ["未识别的文件格式"],
+            ["未识别的文件格式"],
+        )
     reader = FileReader(path)
     try:
         if format_name == "exr":
@@ -792,7 +1274,9 @@ def build_metadata_patches(path, target_epoch, tz):
     finally:
         reader.close()
     if info is None:
-        return MetadataInfo("unknown", [], ["格式识别失败"])
+        return MetadataInfo(
+            "unknown", [], ["格式识别失败"], ["格式识别失败"]
+        )
     patches = sorted(info.patches, key=lambda patch: patch.offset)
     last_end = -1
     for patch in patches:

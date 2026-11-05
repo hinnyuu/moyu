@@ -62,6 +62,7 @@
 | `--dry-run` | 只打印计划，不写 ZIP |
 | `--deflate` | 使用 deflate 压缩（默认 STORE） |
 | `--keep-metadata` | 保留文件内部元数据（默认改写） |
+| `--strict-metadata` | 无法确认或无法改写元数据时直接失败 |
 | `--chunk-size` | 读写块大小，默认 `1M` |
 | `--manifest` | 输出 JSON 时间清单 |
 | `--follow-symlinks` | 跟随符号链接 |
@@ -78,6 +79,7 @@
 - 覆盖：默认拒绝覆盖已有输出；`--force` 允许。
 - ZIP64：大文件自动启用。
 - 元数据：默认原地改写文件内部时间字段；`--keep-metadata` 可保留原样。
+- 严格模式：`--strict-metadata` 遇到未知格式、未知压缩方法、无法定位的 AVIF 元数据等情况直接失败。
 - 校验：打包后自动检查 extra field、DOS 时间、路径、加密、comment 等。
 
 ### 内部元数据改写
@@ -87,17 +89,19 @@
 | 格式 | 改写字段 |
 | --- | --- |
 | EXR / Multi-Layer EXR | header 中的 `Date` 属性 |
-| PNG | `tEXt` / 未压缩 `iTXt` 的日期字段；`eXIf` 中的 EXIF 日期；同步重算 chunk CRC |
-| JPEG | `Blender:Date` COM 段、APP1 EXIF 日期、APP1 XMP 日期 |
+| PNG | `tEXt`、`iTXt`、`zTXt`、`eXIf` 中的日期；压缩文本会解压、改写、重压缩并重建 chunk/CRC |
+| JPEG | `Blender:Date` COM 段、APP1 EXIF 日期、APP1 XMP 日期、APP13 |
 | TIFF | EXIF `DateTime` / `DateTimeOriginal` / `DateTimeDigitized`、XMP、Photoshop IRB |
 | WebP | `EXIF` chunk、`XMP ` chunk（如果存在） |
-| AVIF | 通过 Pillow 定位 Exif 数据后改写其中的 EXIF 日期（如果存在） |
+| AVIF | 原生解析 `iinf`/`iloc` 的 Exif/XMP item；解析失败时回退 Pillow |
 | MP4 / MOV | `©day` / `date` 字符串；非零的 `mvhd` / `tkhd` / `mdhd` creation/modification |
 | MKV | `DATE*` 系列 TagString；`Info` 中的 `DateUTC` |
 
-补丁全部要求**等长替换**，因此不会改变容器大小、媒体流偏移或像素数据。测试集里的 AVIF / WebP 没有可读日期字段，会保持原样。
+常规字段使用**等长原地补丁**，不会改变容器大小、媒体流偏移或像素数据。PNG 的压缩元数据需要解压、改写、重新压缩，chunk 长度会变化，因此会先重建到临时 PNG，再写入 ZIP；源文件仍然不动。
 
-压缩的 `zTXt` / `iTXt`、未知自定义元数据会继续打包并提示；无法生成等长补丁的时间字段会直接报错并停止打包。
+`--strict-metadata` 会把“未知格式、未知压缩方法、无法定位/解析的 AVIF 元数据、多 extent 或 idat construction”等无法确认的情况视为失败。默认模式下这些情况会继续打包并在摘要里提示。
+
+测试集里的 AVIF / WebP 没有可读日期字段，会保持原样。
 
 ### 校验器
 
@@ -160,9 +164,9 @@
 - DOS 时间只有 2 秒精度，小于 2 秒的帧间隔会被压平。
 - DOS 时间没有时区信息；跨时区解压会按解压机本地时间解释。
 - 不写入目录条目；解压时目录由解压工具创建。
-- 内部元数据改写只覆盖上面表格中的字段；压缩元数据、未知自定义字段、非时间字段（File / Software / Camera 等）不改。
-- 等长补丁是硬约束；如果某个时间字段无法等长替换，会报错并停止打包。
-- AVIF Exif 改写依赖 Pillow；未安装时会跳过并提示。
+- 内部元数据改写覆盖上面表格中的字段；未知自定义字段、非时间字段（File / Software / Camera 等）不改。
+- PNG 压缩元数据会重建 chunk，可能产生一个临时 PNG；其余格式使用等长补丁。无法生成等长补丁的时间字段会直接报错并停止打包。
+- AVIF 原生解析覆盖常见的单 extent Exif/XMP；`idat` construction、多 extent 等结构在严格模式下会失败，默认模式会提示。
 - 打包本身会读取源文件，可能更新源文件 atime；不改 mtime / ctime / btime。
 - 源文件的时间保持不变；如果老板能直接看源机器，仍然能看到真实 mtime。
 
@@ -203,7 +207,8 @@ python3 -m unittest discover -s tests -v
 
 - [x] 实验性 ZIP 打包与校验原型
 - [x] 常见图片/视频内部时间元数据改写
-- [ ] 压缩元数据与更完整的 AVIF / WebP 覆盖
+- [x] 压缩 PNG 元数据、AVIF 原生 Exif/XMP 与 WebP 覆盖
+- [x] 严格元数据失败模式
 - [ ] ZIP 写入性能与资源限制调优
 - [ ] Docker 中心化部署
 - [ ] WebUI 操作
