@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export LC_ALL=C
 
 readonly PROG="${0##*/}"
 readonly VERSION="0.1.0"
