@@ -1,0 +1,10 @@
+name: pipeline
+status: draft
+summary: 打包业务编排：扫描/资产输入、时间计划、媒体补丁、ZIP 写入、manifest、校验。
+interfaces:
+  - PackPlan、ArchiveWriter、MetadataAdapter
+dependencies: contracts, core-time, media-metadata, archive-zip
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests: []

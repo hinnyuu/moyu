@@ -1,0 +1,9 @@
+name: template
+status: draft
+summary: 模块模板，复制后修改
+interfaces: []
+dependencies: []
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests: []

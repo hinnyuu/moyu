@@ -1,0 +1,10 @@
+name: gateway
+status: draft
+summary: Rust TLS 终止、反向代理、证书热重载、IPv4/IPv6 双栈、管理 API 与 token。
+interfaces:
+  - GatewayAdmin；HTTP 路由
+dependencies: contracts, config
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests: []

@@ -1,0 +1,10 @@
+name: contracts
+status: draft
+summary: 跨模块接口、OpenAPI、JSON Schema 和生成客户端的唯一事实来源。
+interfaces:
+  - OpenAPI、JSON Schema、模块接口契约
+dependencies: 无
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests: []

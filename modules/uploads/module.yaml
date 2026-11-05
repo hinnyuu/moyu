@@ -1,0 +1,10 @@
+name: uploads
+status: draft
+summary: tus 断点续传会话、偏移量、完成钩子、入库。
+interfaces:
+  - UploadSessionStore；tusd 完成钩子
+dependencies: contracts, storage
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests: []

@@ -1,0 +1,10 @@
+name: wasm-client
+status: draft
+summary: 可选浏览器 ZIP/预览转码；Rust WASM，懒加载，不是默认路径。
+interfaces:
+  - WasmPackClient：capabilities / pack / transcode
+dependencies: contracts, core-time
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests: []

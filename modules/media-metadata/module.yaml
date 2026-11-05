@@ -1,0 +1,10 @@
+name: media-metadata
+status: draft
+summary: 识别媒体格式，探测内部时间字段，生成等长补丁或 materialize 重建计划，并在写 ZIP 时流式应用。
+interfaces:
+  - MetadataAdapter：detect / inspect / plan / apply
+dependencies: contracts, core-time
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests: []

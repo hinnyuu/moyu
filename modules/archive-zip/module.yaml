@@ -1,0 +1,10 @@
+name: archive-zip
+status: draft
+summary: 写交付 ZIP：DOS mtime、安全条目名、ZIP64、无时间类 extra field、CRC 与原子改名。
+interfaces:
+  - ArchiveWriter：add_entry / finalize / verify
+dependencies: contracts
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests: []

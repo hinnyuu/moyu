@@ -1,0 +1,10 @@
+name: api
+status: draft
+summary: HTTP API、认证、任务/上传接口、Web 静态文件、管理接口聚合。
+interfaces:
+  - OpenAPI；GatewayAdmin 客户端；Job/Asset/Config API
+dependencies: contracts, pipeline, storage, uploads, preview, config
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests: []

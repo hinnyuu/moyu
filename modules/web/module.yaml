@@ -1,0 +1,10 @@
+name: web
+status: draft
+summary: React + Vite + TypeScript 静态 SPA：上传队列、任务、预览、配置、管理。
+interfaces:
+  - HTTP API；可选 lazy WASM
+dependencies: contracts 生成的客户端
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests: []
