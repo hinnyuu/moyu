@@ -1,0 +1,26 @@
+name: python
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  modules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m pip install pyyaml pillow
+      - name: Run module tests
+        run: |
+          set -e
+          for tests in modules/*/tests; do
+            echo "== $tests =="
+            python3 -m unittest discover -s "$tests" -v
+          done

@@ -9,6 +9,7 @@
 - [2026-11-06 修复 agent-gate 空范围与 merge commit](commits/2026-11-06-fix-agent-gate-empty-range.md)
 - [2026-11-06 core-time 最小实现与 Rust CI](commits/2026-11-06-core-time-minimal-rust-ci.md)
 - [2026-11-06 Rust CI 清理](commits/2026-11-06-rust-ci-cleanup.md)
+- [2026-11-06 archive-zip 阶段 1 最小实现](commits/2026-11-06-archive-zip-implementation.md)
 
 ## 决策记录（ADR）
 

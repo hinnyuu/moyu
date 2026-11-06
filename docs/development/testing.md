@@ -65,7 +65,7 @@
 
 ## 6. CI
 
-- Python 单元/集成测试。
+- Python 单元/集成测试：`python` workflow 遍历 `modules/*/tests` 执行 `unittest discover`。
 - Rust fmt/clippy/test/deny/audit。
 - WASM target check + wasm-pack。
 - Web lint/typecheck/unit/E2E（Playwright）。
