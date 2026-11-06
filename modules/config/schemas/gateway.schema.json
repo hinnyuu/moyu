@@ -4,47 +4,115 @@
   "title": "gateway config",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "enabled", "listen", "cert", "reload"],
+  "required": [
+    "schemaVersion",
+    "enabled",
+    "listen",
+    "cert",
+    "reload",
+    "upstream"
+  ],
   "properties": {
-    "schemaVersion": { "type": "integer", "minimum": 1 },
-    "enabled": { "type": "boolean" },
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "enabled": {
+      "type": "boolean"
+    },
     "listen": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ipv4", "ipv6", "port"],
+      "required": [
+        "ipv4",
+        "ipv6",
+        "port"
+      ],
       "properties": {
-        "ipv4": { "type": "string" },
-        "ipv6": { "type": "string" },
-        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+        "ipv4": {
+          "type": "string"
+        },
+        "ipv6": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
       }
     },
     "cert": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["certFile", "keyFile"],
+      "required": [
+        "certFile",
+        "keyFile"
+      ],
       "properties": {
-        "certFile": { "type": "string" },
-        "keyFile": { "type": "string" }
+        "certFile": {
+          "type": "string"
+        },
+        "keyFile": {
+          "type": "string"
+        }
       }
     },
     "reload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["onStart", "pollInterval", "watch", "signal", "api"],
+      "required": [
+        "onStart",
+        "pollInterval",
+        "watch",
+        "signal",
+        "api"
+      ],
       "properties": {
-        "onStart": { "type": "boolean" },
-        "pollInterval": { "type": "string" },
-        "watch": { "type": "boolean" },
-        "signal": { "type": "boolean" },
+        "onStart": {
+          "type": "boolean"
+        },
+        "pollInterval": {
+          "type": "string"
+        },
+        "watch": {
+          "type": "boolean"
+        },
+        "signal": {
+          "type": "boolean"
+        },
         "api": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["enabled", "listen", "tokenFile"],
+          "required": [
+            "enabled",
+            "listen",
+            "tokenFile"
+          ],
           "properties": {
-            "enabled": { "type": "boolean" },
-            "listen": { "type": "string" },
-            "tokenFile": { "type": "string" }
+            "enabled": {
+              "type": "boolean"
+            },
+            "listen": {
+              "type": "string"
+            },
+            "tokenFile": {
+              "type": "string"
+            }
           }
+        }
+      }
+    },
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1
         }
       }
     }

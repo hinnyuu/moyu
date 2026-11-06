@@ -59,6 +59,7 @@ DEFAULTS = {
                 "tokenFile": "/run/secrets/gateway_reload_token",
             },
         },
+        "upstream": {"url": "http://api"},
     },
     "api": {
         "schemaVersion": 1,

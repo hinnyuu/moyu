@@ -1,16 +1,16 @@
 # gateway 模块文档
 
-状态：v0.0.1 架构草稿，尚未实现。
+状态：v0.0.1 阶段 2 最小实现（Rust，rustls + hyper）。
 
 ## 职责
 
 Rust TLS 终止、反向代理、证书热重载、IPv4/IPv6 双栈、管理 API 与 token。
 
-同一镜像的 gateway 容器；rustls + hyper/axum；证书目录挂载；默认轮询 30s + API；watch/SIGHUP 可选；token 共享 secret；管理 API 只回环；流式上传/SSE；standalone 模式启用，external Caddy 模式省略。
+同一镜像的 gateway 容器；证书目录挂载；默认轮询 30s + 管理 API；SIGHUP 可选；token 共享 secret；管理 API 建议只回环；流式转发；standalone 模式启用，external Caddy 模式省略。
 
 ## 非职责
 
-不做 ACME、不管理业务数据、不解析媒体。
+不做 ACME、不管理业务数据、不解析媒体、不做请求体限流。
 
 ## 依赖
 
@@ -18,23 +18,96 @@ contracts, config
 
 ## 接口
 
-GatewayAdmin；HTTP 路由
+Rust 包位于 `rust/src/`：
+
+- `GatewayConfig`：`listen`、`cert`、`reload`、`upstream`。
+- `CertStore`：加载/重载证书，`ArcSwap` 原子替换。
+- `proxy::serve`：TLS 接受 + 反向代理。
+- `admin::serve`：管理 HTTP API。
+
+管理 API：
+
+- `GET /status`：`{status,cert_loaded_at,reloads}`；
+- `POST /reload`：重读证书，返回新的 `cert_loaded_at`；
+- `GET /healthz`：健康检查；
+- 所有请求要求 `Authorization: Bearer <token>`；token 来自 `reload.api.tokenFile`，每次请求读取，支持轮换。
+
+## 启动
+
+```bash
+MOYU_GATEWAY_CONFIG=/config/modules/gateway.yaml moyu-gateway
+```
+
+`enabled: false` 时打印 `disabled` 并退出，不监听端口。
+
+## 代理行为
+
+- 下游 TLS 支持 ALPN `h2` 与 `http/1.1`；
+- 上游固定 HTTP/1.1，保留路径与查询串；
+- 流式转发请求/响应体，不整包缓冲；
+- 去除 hop-by-hop 头并重写 `Host`；
+- 上游失败返回 `502` 文本错误，不泄露内部路径。
+
+## 证书热重载
+
+- 启动时加载证书/私钥；无效则启动失败。
+- `reload.pollInterval` 支持 `ms/s/m/h`，`0s` 关闭轮询。
+- `reload.api` 提供立即重载。
+- `reload.signal` 为 true 时监听 SIGHUP。
+- `reload.watch` 当前未实现文件系统监听；为 true 时记录日志并依赖轮询/管理 API。
+
+## 配置
+
+```yaml
+schemaVersion: 1
+enabled: true
+listen:
+  ipv4: "0.0.0.0"
+  ipv6: "::"
+  port: <port>
+cert:
+  certFile: /certs/tls.crt
+  keyFile: /certs/tls.key
+reload:
+  onStart: true
+  pollInterval: "30s"
+  watch: false
+  signal: false
+  api:
+    enabled: true
+    listen: "127.0.0.1:<admin-port>"
+    tokenFile: /run/secrets/gateway_reload_token
+upstream:
+  url: "http://api:<internal-port>"
+```
 
 ## 失败模式
 
-证书无效、私钥不匹配、端口占用、IPv6 不可用、token 失效、反代缓冲。
+证书缺失/损坏、私钥不匹配、端口占用、IPv6 不可用、token 文件缺失、上游不可达、TLS 握手失败。
 
 ## 测试
 
-TLS A→B 热重载、双栈、流式、SSE、token、坏证书回退、启动失败。
+```bash
+cargo test -p moyu-gateway
+cargo clippy -p moyu-gateway --all-targets -- -D warnings
+```
+
+单元测试覆盖：配置解析与未知字段拒绝、时间间隔解析、证书加载/重载、缺失文件。
+
+运行时验证：
+
+- TLS 代理到本地上游返回 200 和上游内容；
+- 管理 API 鉴权、状态、重载；
+- 替换证书后 `POST /reload`，TLS 指纹变化且无需重启；
+- IPv4 `127.0.0.1` 与 IPv6 `::1` 同时可访问。
+
+## 已知限制
+
+- `watch` 文件监听未实现；
+- 未做 HTTP/3、请求大小限制、速率限制；
+- 管理 API token 比较是普通字符串比较；
+- 上游只支持 HTTP/1.1。
 
 ## 替换点
 
 Rust 实现可替换；接口与证书/管理契约不变。
-
-## Rust 骨架
-
-- workspace member：`modules/gateway/rust`，package `moyu-gateway`。
-- 当前只有骨架 `main`，没有 TLS/反代/证书逻辑。
-- 沙箱没有 cargo/rustc，未编译；实现阶段验证 musl 构建、证书热重载、双栈、流式转发。
-- gateway 与 wasm-client 不互相依赖。
