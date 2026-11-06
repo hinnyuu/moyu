@@ -1,6 +1,6 @@
 # config 模块文档
 
-状态：v0.0.1 架构草稿，尚未实现。
+状态：v0.0.1 阶段 2 最小实现（Python）。
 
 ## 职责
 
@@ -10,7 +10,7 @@
 
 ## 非职责
 
-不直接执行 Podman、不管理业务数据、不实现 UI。
+不直接执行 Podman、不管理业务数据、不实现 UI、不写 secret 文件。
 
 ## 依赖
 
@@ -18,24 +18,71 @@ contracts
 
 ## 接口
 
-ConfigProvider：load / validate / write / last_known_good
+Python 包位于 `src/moyu_config/`：
+
+- `ConfigProvider(config_dir, schemas_dir=None)`
+  - `load() -> EffectiveConfig`
+  - `validate(name, data) -> dict`
+  - `write(name, patch, revision=None) -> WriteResult`
+  - `last_known_good(name) -> dict`
+- `EffectiveConfig`：`global_config`、`modules`、`revisions`、`degraded`、`get(name)`、`to_dict()`。
+- `WriteResult`：`name`、`revision`、`data`、`backup`。
+- `ConfigError`：`code`、`message`、`details`、`to_dict()`。
+
+配置名：`global`（`moyu.yaml`）、`gateway`、`api`、`worker`、`preview`、`storage`、`uploads`（`modules/<name>.yaml`）。
+
+schema 位于 `schemas/*.schema.json`；默认值位于 `src/moyu_config/defaults.py`。
+
+## 加载与写入语义
+
+加载：
+
+1. 创建 `config/`、`config/modules/`、`config/state/{last-known-good,backups}/`；
+2. 缺失文件写入内置默认值并校验；
+3. 已存在文件按 YAML 1.2 解析、禁止 anchor/alias/merge key、按 JSON Schema 严格校验；
+4. 非法时读取 `state/last-known-good/`；没有 LKG 则抛 `ConfigError`，不静默覆盖用户配置；
+5. 成功加载的每个文件写入 LKG。
+
+写入：
+
+1. 读取当前文件并校验，比较 `revision`（文件 sha256）；
+2. 深合并 patch，`null` 表示删除字段；
+3. 校验通过后先备份到 `state/backups/`，再原子替换；
+4. 新内容同步到 LKG；
+5. 校验失败或 revision 冲突时不改文件。
+
+## 默认值
+
+默认值是运行配置的起点，不是固定部署事实。端口、路径、证书位置都在默认文件中给出可编辑示例值；gateway 默认关闭，由部署方式决定是否启用。
 
 ## 失败模式
 
-schema 不兼容、文件损坏、并发写、secret 权限、迁移失败。
+- `schema_invalid`：字段类型/范围/未知字段不合法；
+- `yaml_invalid` / `yaml_alias`：YAML 解析失败或使用 anchor/alias；
+- `revision_conflict`：并发写覆盖；
+- `lkg_missing`：配置非法且没有可用 LKG；
+- `config_write_failed` / `backup_failed`：磁盘或权限问题；
+- `schema_missing` / `schema_invalid`：schema 文件缺失或不是合法 JSON Schema。
 
 ## 测试
 
-schema、默认值、迁移、并发、last-known-good、原子写、secret 权限。
+`tests/test_config.py` 覆盖：
+
+- 首次加载创建默认文件与 LKG；
+- 未知字段触发 LKG 回退；
+- 无 LKG 时非法配置启动失败；
+- YAML alias 拒绝；
+- 写入、revision 冲突、schema 拒绝、备份文件；
+- 深合并与 `null` 删除；
+- secret 文件不被触碰；
+- 默认值全部通过 schema。
+
+运行：
+
+```bash
+python3 -m unittest discover -s modules/config/tests -v
+```
 
 ## 替换点
 
-格式可换 TOML/JSON，存储可换，但语义一致。
-
-## JSON Schema（草稿）
-
-- `schemas/moyu.schema.json`：全局配置。
-- `schemas/gateway.schema.json`：监听、证书、热重载、管理 API。
-- `schemas/api.schema.json`、`worker.schema.json`、`preview.schema.json`、`storage.schema.json`、`uploads.schema.json`。
-- 端口只约束 1–65535，不写默认值；实际值由部署/运行配置决定。
-- 当前 schema 是草稿，后续由 config 模块加载器严格校验。
+格式可换 TOML/JSON，存储可换，但必须保持：多文件、严格 schema、原子写、revision、LKG、secret 分离。
