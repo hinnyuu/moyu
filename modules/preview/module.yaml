@@ -1,10 +1,11 @@
 name: preview
 status: draft
-summary: 媒体探测、图片缩略图/代理、视频 poster/MP4/HLS、EXR/TIFF 预览，缓存与资源限制。
+summary: 媒体探测、图片缩略图/代理、缓存与资源限制。
 interfaces:
   - PreviewProvider：probe / generate / delete
 dependencies: contracts, storage
 docs: docs/index.md
 history: history/index.md
 wiki: wiki/index.md
-tests: []
+tests:
+  - tests/test_preview.py
