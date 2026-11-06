@@ -4,3 +4,4 @@
 
 - [2026-11-06 模块骨架建立](2026-11-06-module-scaffold.md)
 - [2026-11-06 阶段 1 最小实现](2026-11-06-media-metadata-implementation.md)
+- [2026-11-06 修复测试素材探测](2026-11-06-fix-media-test-ci.md)

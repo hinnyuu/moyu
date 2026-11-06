@@ -27,8 +27,15 @@ VIDEOS = [
 ]
 
 
+def available(path):
+    try:
+        return path.exists()
+    except OSError:
+        return False
+
+
 def image_files():
-    if not IMAGE_ROOT.exists():
+    if not available(IMAGE_ROOT):
         return []
     files = []
     for directory in sorted(IMAGE_ROOT.iterdir()):
@@ -101,7 +108,7 @@ class MediaMetadataTests(unittest.TestCase):
                 with Image.open(output) as image:
                     image.load()
 
-    @unittest.skipUnless(all(path.exists() for path in VIDEOS), "视频测试集不存在")
+    @unittest.skipUnless(all(available(path) for path in VIDEOS), "视频测试集不存在")
     def test_videos_rewrite(self):
         for source in VIDEOS:
             info = md.build_metadata_patches(str(source), self.target, TZ)
