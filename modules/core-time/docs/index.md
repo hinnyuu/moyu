@@ -31,3 +31,10 @@ TimePolicy、PackPlan 时间字段；Rust `moyu-core`
 ## 替换点
 
 纯函数实现可替换；Rust 与 Python 实现必须通过同一套时间向量 conformance。
+
+## Rust 骨架
+
+- workspace member：`modules/core-time/rust`，package `moyu-core`。
+- 当前只有无逻辑占位 `CRATE_NAME`，不包含时间算法。
+- 沙箱没有 cargo/rustc，未编译；实现阶段在 CI/目标机验证。
+- 时间算法实现后必须通过固定时间向量 conformance。

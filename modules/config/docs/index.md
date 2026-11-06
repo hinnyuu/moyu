@@ -31,3 +31,11 @@ schema、默认值、迁移、并发、last-known-good、原子写、secret 权�
 ## 替换点
 
 格式可换 TOML/JSON，存储可换，但语义一致。
+
+## JSON Schema（草稿）
+
+- `schemas/moyu.schema.json`：全局配置。
+- `schemas/gateway.schema.json`：监听、证书、热重载、管理 API。
+- `schemas/api.schema.json`、`worker.schema.json`、`preview.schema.json`、`storage.schema.json`、`uploads.schema.json`。
+- 端口只约束 1–65535，不写默认值；实际值由部署/运行配置决定。
+- 当前 schema 是草稿，后续由 config 模块加载器严格校验。

@@ -51,3 +51,17 @@
 - WebUI 直接控制 Podman
 - 网关和 WASM 合并一个 crate
 - 写死端口
+
+## 门禁
+
+```bash
+python3 modules/agent-gate/src/agent_gate.py check --staged
+```
+
+安装 hook：
+
+```bash
+git config core.hooksPath .githooks
+```
+
+门禁只检查文档结构和历史完整性，不评价代码实现。

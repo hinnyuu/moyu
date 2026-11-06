@@ -84,3 +84,18 @@
 - 不要把网关和 WASM 合并成一个 crate。
 - 不要在代码或文档里写死端口；示例端口只是占位符。
 - 不要修改用户源文件作为默认行为。
+
+## 门禁命令
+
+```bash
+python3 modules/agent-gate/src/agent_gate.py check --staged
+python3 modules/agent-gate/src/agent_gate.py check --base origin/main
+```
+
+安装仓库 hook：
+
+```bash
+git config core.hooksPath .githooks
+```
+
+`agent-gate` 检查 history/docs/wiki 结构、module.yaml、相对链接和 docs 中的 history 语气。

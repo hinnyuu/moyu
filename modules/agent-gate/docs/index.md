@@ -31,3 +31,13 @@ check 命令；commit 遍历
 ## 替换点
 
 工具可替换；规则文档化。
+
+## Phase 0 实现
+
+- CLI：`python3 modules/agent-gate/src/agent_gate.py check --staged`
+- 支持 `--base <ref>` 按 commit 遍历，`--all` 只做结构/链接检查。
+- 检查根 `history/commits` 记录、模块 history、docs/wiki impact、module.yaml、Markdown 相对链接。
+- pre-commit：`.githooks/pre-commit`；安装：`git config core.hooksPath .githooks`。
+- CI：`.github/workflows/agent-gate.yml`。
+- 依赖：`modules/agent-gate/requirements.txt` 中的 PyYAML。
+- 尚未实现：OpenAPI/JSON Schema 内容校验、提交记录 diff 语义审查。

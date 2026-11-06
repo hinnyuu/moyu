@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyu.local/schemas/uploads.schema.json",
+  "title": "uploads config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "maxUploadBytes", "sessionTtlSeconds", "chunkSizeBytes"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "maxUploadBytes": { "type": "integer", "minimum": 1048576 },
+    "sessionTtlSeconds": { "type": "integer", "minimum": 300 },
+    "chunkSizeBytes": { "type": "integer", "minimum": 1048576 },
+    "tusBasePath": { "type": "string" }
+  }
+}

@@ -31,3 +31,10 @@ Chromium feature detection、客户端 ZIP conformance、预览回退、内存/�
 ## 替换点
 
 可禁用/替换；Rust crate 与 gateway 不互相依赖。
+
+## Rust 骨架
+
+- workspace member：`modules/wasm-client/rust`，package `moyu-wasm-client`，crate-type `cdylib + rlib`。
+- 当前只有无逻辑占位，不包含 ZIP/转码。
+- 沙箱没有 cargo/rustc；实现阶段用 `wasm-pack` 构建并验证 target 依赖隔离。
+- v0.0.1 客户端 ZIP 只承诺 DOS mtime，不承诺内部元数据改写。

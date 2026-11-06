@@ -7,3 +7,4 @@
 - 接口：TimePolicy、PackPlan 时间字段；Rust `moyu-core`
 
 阅读顺序：`docs/index.md` → `history/index.md` → `wiki/index.md`。
+- Phase 0 已建立 Rust core crate 骨架；业务实现尚未开始。

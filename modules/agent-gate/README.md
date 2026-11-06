@@ -7,3 +7,4 @@
 - 接口：check 命令；commit 遍历
 
 阅读顺序：`docs/index.md` → `history/index.md` → `wiki/index.md`。
+- Phase 0 已实现：commit/staged 门禁、模块 history、docs/wiki impact、module.yaml 和链接检查。

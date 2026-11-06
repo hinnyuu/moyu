@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyu.local/schemas/job.schema.json",
+  "title": "Job",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind", "status", "progress", "createdAt", "updatedAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "kind": { "enum": ["pack", "preview"] },
+    "status": {
+      "enum": ["created", "queued", "running", "verifying", "succeeded", "failed", "canceled"]
+    },
+    "progress": { "type": "number", "minimum": 0, "maximum": 100 },
+    "batchId": { "type": ["string", "null"] },
+    "input": { "type": "object" },
+    "output": { "type": "object" },
+    "error": { "type": ["object", "null"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  }
+}

@@ -27,3 +27,12 @@ moyu 采用 **contract-first**：模块之间先对齐契约，再写实现。�
 - API 路径带主版本，例如 `/api/v1/...`。
 - 内部契约有 `contract_version`；破坏性变更必须升版本并提供迁移说明。
 - 配置有 `schemaVersion`，启动时迁移；迁移前备份到 `state/backups/`。
+
+## 机械契约文件
+
+- [OpenAPI 草稿](../../modules/contracts/openapi/openapi.yaml)
+- [PackPlan Schema](../../modules/contracts/schemas/pack-plan.schema.json)
+- [MetadataReport Schema](../../modules/contracts/schemas/metadata-report.schema.json)
+- [Job Schema](../../modules/contracts/schemas/job.schema.json)
+- [GatewayToken Schema](../../modules/contracts/schemas/gateway-token.schema.json)
+- [配置 schema 目录](../../modules/config/schemas/)

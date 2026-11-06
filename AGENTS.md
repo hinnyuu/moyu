@@ -77,3 +77,10 @@
 - 架构冻结前不打 `v0.0.1` 标签。
 - 架构草稿在 `draft/v0.0.1-architecture` 分支。
 - 合并到 `main` 后再开始业务实现；实现完成、端到端验收通过后才创建 `v0.0.1` release。
+
+## 门禁命令
+
+```bash
+python3 modules/agent-gate/src/agent_gate.py check --staged
+python3 modules/agent-gate/src/agent_gate.py check --base origin/main
+```

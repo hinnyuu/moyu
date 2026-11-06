@@ -17,3 +17,4 @@
 ## 版本发布
 
 - 尚无。v0.0.1 尚未创建。
+- [2026-11-06 Phase 0：agent-gate、契约、配置 schema 与 Rust 骨架](commits/2026-11-06-phase0-agent-gate-contracts-config-rust.md)

@@ -73,7 +73,14 @@
 - `agent-gate` 按 commit 检查。
 - Podman smoke test 可在自托管 runner 或本地执行；GitHub 托管 runner 做逻辑测试。
 
-## 7. 不可接受的完成标准
+## 7. Agent-gate
+
+- 单元测试：`python3 -m unittest discover -s modules/agent-gate/tests -v`
+- 按 commit 检查：`python3 modules/agent-gate/src/agent_gate.py check --base origin/main`
+- 检查内容：根 history、模块 history、docs/wiki impact、module.yaml、相对链接、docs history 语气。
+- agent-gate 不替代代码测试。
+
+## 8. 不可接受的完成标准
 
 - 只有编译通过，没有行为测试。
 - 只测 happy path，不测失败/降级。

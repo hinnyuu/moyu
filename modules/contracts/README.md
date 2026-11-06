@@ -7,3 +7,4 @@
 - 接口：OpenAPI、JSON Schema、模块接口契约
 
 阅读顺序：`docs/index.md` → `history/index.md` → `wiki/index.md`。
+- Phase 0 已建立 OpenAPI 草稿与 JSON Schema；业务实现尚未开始。

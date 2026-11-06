@@ -31,3 +31,10 @@ TLS A→B 热重载、双栈、流式、SSE、token、坏证书回退、启动�
 ## 替换点
 
 Rust 实现可替换；接口与证书/管理契约不变。
+
+## Rust 骨架
+
+- workspace member：`modules/gateway/rust`，package `moyu-gateway`。
+- 当前只有骨架 `main`，没有 TLS/反代/证书逻辑。
+- 沙箱没有 cargo/rustc，未编译；实现阶段验证 musl 构建、证书热重载、双栈、流式转发。
+- gateway 与 wasm-client 不互相依赖。

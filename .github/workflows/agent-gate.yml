@@ -1,0 +1,19 @@
+name: agent-gate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m pip install pyyaml
+      - run: python3 -m unittest discover -s modules/agent-gate/tests -v
+      - run: python3 modules/agent-gate/src/agent_gate.py check --base origin/main --verbose

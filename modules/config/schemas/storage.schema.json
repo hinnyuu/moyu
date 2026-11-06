@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyu.local/schemas/storage.schema.json",
+  "title": "storage config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "dataRoot", "quotaBytes"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "dataRoot": { "type": "string" },
+    "quotaBytes": { "type": "integer", "minimum": 0 },
+    "uploadTtlSeconds": { "type": "integer", "minimum": 60 },
+    "previewTtlSeconds": { "type": "integer", "minimum": 60 }
+  }
+}

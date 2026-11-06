@@ -7,3 +7,4 @@ Rust TLS 终止、反向代理、证书热重载、IPv4/IPv6 双栈、管理 API
 - 接口：GatewayAdmin；HTTP 路由
 
 阅读顺序：`docs/index.md` → `history/index.md` → `wiki/index.md`。
+- Phase 0 已建立 Rust gateway crate 骨架；业务实现尚未开始。

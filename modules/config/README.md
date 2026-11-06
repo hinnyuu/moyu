@@ -7,3 +7,4 @@
 - 接口：ConfigProvider：load / validate / write / last_known_good
 
 阅读顺序：`docs/index.md` → `history/index.md` → `wiki/index.md`。
+- Phase 0 已建立全局与模块配置 JSON Schema；业务实现尚未开始。

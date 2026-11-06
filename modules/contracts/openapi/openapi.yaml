@@ -1,0 +1,177 @@
+openapi: 3.1.0
+info:
+  title: moyu API
+  version: 0.0.1-draft
+  description: |
+    v0.0.1 架构草稿。上传大文件由 tusd 处理；本 OpenAPI 描述应用 API、
+    任务、配置、下载、预览和网关管理接口。所有端口/路径由部署配置决定。
+servers:
+  - url: /
+security:
+  - sessionCookie: []
+paths:
+  /api/v1/health:
+    get:
+      summary: 健康检查
+      security: []
+      responses:
+        "200":
+          description: OK
+  /api/v1/auth/session:
+    post:
+      summary: 登录并建立会话
+      security: []
+      responses:
+        "204":
+          description: 登录成功
+    delete:
+      summary: 退出登录
+      responses:
+        "204":
+          description: 已退出
+  /api/v1/uploads:
+    post:
+      summary: 创建上传会话
+      description: 返回 tus 上传地址和会话 token；实际分片由 tusd 处理。
+      responses:
+        "201":
+          description: 已创建
+  /api/v1/jobs:
+    get:
+      summary: 列出任务
+      responses:
+        "200":
+          description: 任务列表
+    post:
+      summary: 创建打包任务
+      responses:
+        "202":
+          description: 已排队
+  /api/v1/jobs/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: 查看任务
+      responses:
+        "200":
+          description: 任务详情
+    delete:
+      summary: 取消任务
+      responses:
+        "202":
+          description: 已请求取消
+  /api/v1/jobs/{id}/events:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: SSE 任务进度
+      responses:
+        "200":
+          description: text/event-stream
+  /api/v1/assets/{id}/download:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: 下载资产或输出
+      responses:
+        "200":
+          description: 文件流
+  /api/v1/previews/{id}/{profile}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: profile
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: 获取预览/代理
+      responses:
+        "200":
+          description: 预览文件
+  /api/v1/config:
+    get:
+      summary: 读取 effective config
+      responses:
+        "200":
+          description: 配置快照
+  /api/v1/config/{module}:
+    parameters:
+      - name: module
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: 读取模块配置
+      responses:
+        "200":
+          description: 模块配置
+    put:
+      summary: 保存模块运行配置
+      responses:
+        "200":
+          description: 已保存
+        "409":
+          description: revision 冲突
+  /api/v1/admin/gateway/cert/reload:
+    post:
+      summary: 触发网关重读挂载证书
+      responses:
+        "200":
+          description: 重载结果
+  /api/v1/admin/gateway/cert/status:
+    get:
+      summary: 查看当前证书状态
+      responses:
+        "200":
+          description: 证书状态
+  /api/v1/admin/gateway/token/rotate:
+    post:
+      summary: 轮换网关重载 token
+      description: 明文 token 只返回一次，可复制。
+      responses:
+        "201":
+          description: 新 token
+  /api/v1/admin/gateway/token:
+    get:
+      summary: 查看 token 元数据
+      responses:
+        "200":
+          description: token 元数据
+    delete:
+      summary: 撤销 token
+      responses:
+        "204":
+          description: 已撤销
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: moyu_session
+  schemas:
+    Job:
+      $ref: ../schemas/job.schema.json
+    PackPlan:
+      $ref: ../schemas/pack-plan.schema.json
+    MetadataReport:
+      $ref: ../schemas/metadata-report.schema.json
+    GatewayToken:
+      $ref: ../schemas/gateway-token.schema.json

@@ -31,3 +31,12 @@ OpenAPI/JSON Schema 校验、版本兼容检查、生成客户端编译。
 ## 替换点
 
 契约本身不替换，只做版本升级；旧版本必须保留迁移说明。
+
+## 机械契约文件
+
+- `openapi/openapi.yaml`：应用 API 草稿。
+- `schemas/pack-plan.schema.json`：PackPlan。
+- `schemas/metadata-report.schema.json`：元数据报告。
+- `schemas/job.schema.json`：任务模型。
+- `schemas/gateway-token.schema.json`：网关 token 元数据。
+- 当前由 `agent-gate` 做结构和链接检查；完整 schema 校验在后续阶段接入。

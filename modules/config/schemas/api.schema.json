@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyu.local/schemas/api.schema.json",
+  "title": "api config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "session", "maxJsonBodyBytes"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cookieName", "ttlSeconds"],
+      "properties": {
+        "cookieName": { "type": "string" },
+        "ttlSeconds": { "type": "integer", "minimum": 60 }
+      }
+    },
+    "maxJsonBodyBytes": { "type": "integer", "minimum": 1024 },
+    "webRoot": { "type": "string" }
+  }
+}

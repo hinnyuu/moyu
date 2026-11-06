@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyu.local/schemas/metadata-report.schema.json",
+  "title": "MetadataReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "fields", "needsMaterialize", "strictProblems", "notes"],
+  "properties": {
+    "format": { "type": "string" },
+    "fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "offset", "old", "new", "kind"],
+        "properties": {
+          "name": { "type": "string" },
+          "offset": { "type": "integer", "minimum": 0 },
+          "old": { "type": "string" },
+          "new": { "type": "string" },
+          "kind": { "enum": ["equal-length", "materialized", "binary"] }
+        }
+      }
+    },
+    "needsMaterialize": { "type": "boolean" },
+    "strictProblems": { "type": "array", "items": { "type": "string" } },
+    "notes": { "type": "array", "items": { "type": "string" } }
+  }
+}
