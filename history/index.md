@@ -4,6 +4,11 @@
 
 - [2026-11-06 v0.0.1 架构草稿](commits/2026-11-06-v0.0.1-architecture-draft.md)
 - [2026-11-06 WebUI 暗色主题要求](commits/2026-11-06-webui-dark-mode.md)
+- [2026-11-06 Phase 0：agent-gate、契约、配置 schema 与 Rust 骨架](commits/2026-11-06-phase0-agent-gate-contracts-config-rust.md)
+- [2026-11-06 修复 agent-gate PR checkout](commits/2026-11-06-fix-agent-gate-pr-checkout.md)
+- [2026-11-06 修复 agent-gate 空范围与 merge commit](commits/2026-11-06-fix-agent-gate-empty-range.md)
+- [2026-11-06 core-time 最小实现与 Rust CI](commits/2026-11-06-core-time-minimal-rust-ci.md)
+- [2026-11-06 Rust CI 清理](commits/2026-11-06-rust-ci-cleanup.md)
 
 ## 决策记录（ADR）
 
@@ -17,7 +22,3 @@
 ## 版本发布
 
 - 尚无。v0.0.1 尚未创建。
-- [2026-11-06 Phase 0：agent-gate、契约、配置 schema 与 Rust 骨架](commits/2026-11-06-phase0-agent-gate-contracts-config-rust.md)
-- [2026-11-06 修复 agent-gate PR checkout](commits/2026-11-06-fix-agent-gate-pr-checkout.md)
-- [2026-11-06 修复 agent-gate 空范围与 merge commit](commits/2026-11-06-fix-agent-gate-empty-range.md)
-- [2026-11-06 core-time 最小实现与 Rust CI](commits/2026-11-06-core-time-minimal-rust-ci.md)

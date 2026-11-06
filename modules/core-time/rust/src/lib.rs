@@ -36,7 +36,7 @@ impl DosTime {
         if !(1..=31).contains(&day) {
             return Err(TimeError::DosOutOfRange);
         }
-        if hour > 23 || minute > 59 || second > 58 || second % 2 != 0 {
+        if hour > 23 || minute > 59 || second > 58 || !second.is_multiple_of(2) {
             return Err(TimeError::DosOutOfRange);
         }
         Ok(Self {
@@ -50,9 +50,7 @@ impl DosTime {
     }
 
     pub fn to_words(self) -> (u16, u16) {
-        let date = ((self.year - 1980) << 9)
-            | (u16::from(self.month) << 5)
-            | u16::from(self.day);
+        let date = ((self.year - 1980) << 9) | (u16::from(self.month) << 5) | u16::from(self.day);
         let time = (u16::from(self.hour) << 11)
             | (u16::from(self.minute) << 5)
             | (u16::from(self.second) / 2);
@@ -139,8 +137,8 @@ pub fn plan_times(
     let mut entries = Vec::with_capacity(sources.len());
     for source in sources {
         let shifted_ns = i128::from(source.mtime_ns) + i128::from(delta_ns);
-        let target_epoch = i64::try_from(shifted_ns.div_euclid(1_000_000_000))
-            .map_err(|_| TimeError::Overflow)?;
+        let target_epoch =
+            i64::try_from(shifted_ns.div_euclid(1_000_000_000)).map_err(|_| TimeError::Overflow)?;
         let dos = dos_from_unix(target_epoch, utc_offset_seconds)?;
         entries.push(PlanEntry {
             id: source.id.clone(),
@@ -202,7 +200,7 @@ mod tests {
         assert_eq!(dos.minute, 34);
         assert_eq!(dos.second, 56);
         let (date, time) = dos.to_words();
-        assert_eq!(date, 1);
+        assert_eq!(date, 34);
         assert_eq!(time, (12 << 11) | (34 << 5) | 28);
     }
 
@@ -212,15 +210,15 @@ mod tests {
         let sources = vec![
             SourceTime {
                 id: "a".to_string(),
-                mtime_ns: i64::from(target - 100) * 1_000_000_000,
+                mtime_ns: (target - 100) * 1_000_000_000,
             },
             SourceTime {
                 id: "b".to_string(),
-                mtime_ns: i64::from(target - 90) * 1_000_000_000,
+                mtime_ns: (target - 90) * 1_000_000_000,
             },
             SourceTime {
                 id: "c".to_string(),
-                mtime_ns: i64::from(target - 80) * 1_000_000_000,
+                mtime_ns: (target - 80) * 1_000_000_000,
             },
         ];
         let plan = plan_times(&sources, target, 8 * 3_600).expect("plan");
