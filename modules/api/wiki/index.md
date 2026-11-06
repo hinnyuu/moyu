@@ -27,6 +27,16 @@ curl -b cookies.txt -X PUT https://<host>/api/v1/config/worker \
   -d '{"patch":{"concurrency":4},"revision":"<revision>"}'
 ```
 
+## 开发模式上传
+
+生产由 tusd 处理分片；同源部署或本地开发可以直接使用 API 的分片端点：
+
+```bash
+curl -b cookies.txt -X PATCH https://<host>/api/v1/uploads/<id>   -H 'Upload-Offset: 0'   -H 'Content-Type: application/offset+octet-stream'   -H 'X-CSRF-Token: <csrf>'   --data-binary @chunk.bin
+```
+
+响应 204，`Upload-Offset` 头是新偏移量；全部传完后调用 `/finish`。
+
 ## 相关
 
 - [模块 docs](../docs/index.md)：当前设计事实。

@@ -54,6 +54,28 @@ paths:
       responses:
         "200":
           description: 会话状态与偏移
+    patch:
+      summary: 追加一个分片（tus 兼容开发端点）
+      description: 生产由 tusd 处理分片；该端点用于同源部署和本地开发，需要 X-CSRF-Token。
+      parameters:
+        - name: Upload-Offset
+          in: header
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+      requestBody:
+        required: true
+        content:
+          application/offset+octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "204":
+          description: 已追加，返回新的 Upload-Offset 响应头
+        "409":
+          description: 偏移量不匹配
   /api/v1/uploads/{id}/finish:
     parameters:
       - name: id

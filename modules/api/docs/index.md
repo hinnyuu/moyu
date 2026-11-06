@@ -10,7 +10,7 @@ FastAPI + OpenAPI；会话认证/CSRF；任务、上传、预览、下载、配�
 
 ## 非职责
 
-不执行打包、不生成预览、不直接控制 Podman、不实现 tus 分片传输。
+不执行打包、不生成预览、不直接控制 Podman。生产环境分片由 tusd 处理；同源/开发模式可使用内置 tus 兼容分片端点。
 
 ## 依赖
 
@@ -41,7 +41,7 @@ contracts, pipeline, storage, uploads, preview, config
 - `GET /api/v1/health`
 - `POST/GET/DELETE /api/v1/auth/session`
 - `GET /api/v1/config`、`GET/PUT /api/v1/config/{module}`
-- `POST /api/v1/uploads`、`GET /api/v1/uploads/{id}`、`POST /api/v1/uploads/{id}/finish`
+- `POST /api/v1/uploads`、`GET/PATCH /api/v1/uploads/{id}`、`POST /api/v1/uploads/{id}/finish`
 - `POST/GET /api/v1/jobs`、`GET/DELETE /api/v1/jobs/{id}`、`GET /api/v1/jobs/{id}/events`（SSE）
 - `GET /api/v1/assets/{id}/download`
 - `GET /api/v1/previews/{id}/{profile}`
@@ -50,6 +50,8 @@ contracts, pipeline, storage, uploads, preview, config
 网关管理接口当前返回 `501 gateway_admin_unavailable`，等待 gateway 客户端接入。
 
 `PUT /api/v1/config/{module}` 请求体：`{"patch": {...}, "revision": "<sha256>"}`；revison 不匹配返回 409。
+
+`PATCH /api/v1/uploads/{id}` 需要 `Upload-Offset` 头与 `application/offset+octet-stream` 请求体，返回 204 与新偏移量。
 
 `POST /api/v1/jobs` 请求体即 worker 的 job request；创建后状态为 `queued`。
 

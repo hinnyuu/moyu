@@ -141,7 +141,17 @@ class ApiTests(unittest.TestCase):
         )
         self.assertEqual(created.status_code, 201, created.text)
         upload_id = created.json()["id"]
-        self.app.state.uploads.append_chunk(upload_id, 0, b"abc")
+        chunk = self.client.patch(
+            f"/api/v1/uploads/{upload_id}",
+            content=b"abc",
+            headers={
+                **headers,
+                "Upload-Offset": "0",
+                "Content-Type": "application/offset+octet-stream",
+            },
+        )
+        self.assertEqual(chunk.status_code, 204, chunk.text)
+        self.assertEqual(chunk.headers["upload-offset"], "3")
         finished = self.client.post(
             f"/api/v1/uploads/{upload_id}/finish", headers=headers
         )
@@ -160,7 +170,16 @@ class ApiTests(unittest.TestCase):
             headers=headers,
         )
         upload_id = created.json()["id"]
-        self.app.state.uploads.append_chunk(upload_id, 0, png)
+        chunk = self.client.patch(
+            f"/api/v1/uploads/{upload_id}",
+            content=png,
+            headers={
+                **headers,
+                "Upload-Offset": "0",
+                "Content-Type": "application/offset+octet-stream",
+            },
+        )
+        self.assertEqual(chunk.status_code, 204, chunk.text)
         image_asset = self.client.post(
             f"/api/v1/uploads/{upload_id}/finish", headers=headers
         ).json()

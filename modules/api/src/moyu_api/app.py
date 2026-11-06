@@ -171,11 +171,21 @@ def create_app(storage, config_provider, auth):
 
     @app.middleware("http")
     async def limit_json_body(request: Request, call_next):
-        if request.method in ("POST", "PUT", "PATCH") and request.url.path.startswith(
-            "/api/v1/"
-        ):
+        is_json_write = (
+            request.method in ("POST", "PUT", "PATCH")
+            and request.url.path.startswith("/api/v1/")
+            and not (
+                request.method == "PATCH"
+                and request.url.path.startswith("/api/v1/uploads/")
+            )
+        )
+        if is_json_write:
             length = request.headers.get("content-length")
-            if length and int(length) > max_json_body:
+            try:
+                too_large = bool(length) and int(length) > max_json_body
+            except ValueError:
+                too_large = False
+            if too_large:
                 return JSONResponse(
                     status_code=413,
                     content=_error_body("request_too_large", "请求体过大", [], "api"),
@@ -260,6 +270,20 @@ def create_app(storage, config_provider, auth):
             "offset": upload_session.offset,
             "status": upload_session.status,
         }
+
+    @app.patch("/api/v1/uploads/{upload_id}", status_code=204)
+    async def append_upload(
+        upload_id: str, request: Request, session=Depends(current_session)
+    ):
+        require_csrf(request, session)
+        header = request.headers.get("upload-offset")
+        try:
+            offset = int(header)
+        except (TypeError, ValueError) as exc:
+            raise _http(400, "invalid_offset", "缺少或非法的 Upload-Offset") from exc
+        data = await request.body()
+        new_offset = uploads.append_chunk(upload_id, offset, data)
+        return Response(status_code=204, headers={"Upload-Offset": str(new_offset)})
 
     @app.post("/api/v1/uploads/{upload_id}/finish", status_code=201)
     async def finish_upload(
