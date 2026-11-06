@@ -15,3 +15,13 @@ core-time 负责回答一个问题：既然最新文件应该在“现在”完�
 ## 第一阶段实现
 
 `moyu-core` 现在能计算一组文件的相对时间计划：最新的文件对齐目标时间，其他文件保持原有间隔，并转成 ZIP 使用的 DOS 时间。它不读文件、不写 ZIP、不查系统时区；时区偏移由调用方传入。
+
+Python 服务使用 `moyu_core_time`，语义与 Rust 版一致：
+
+```python
+from moyu_core_time import SourceTime, plan_times
+
+sources = [SourceTime("a", 1_700_000_000_000_000_000)]
+plan = plan_times(sources, 1_800_000_000, 8 * 3600)
+print(plan.entries[0].dos)
+```

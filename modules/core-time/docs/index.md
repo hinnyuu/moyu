@@ -1,6 +1,6 @@
 # core-time 模块文档
 
-状态：v0.0.1 架构草稿，尚未实现。
+状态：v0.0.1 阶段 1 最小实现（Rust + Python 参考实现）。
 
 ## 职责
 
@@ -49,4 +49,16 @@ TimePolicy、PackPlan 时间字段；Rust `moyu-core`
   - 溢出时返回 `Overflow`。
 - `dos_from_unix` 使用固定 UTC offset，不依赖系统时区/时区数据库；IANA 时区解析由上层配置层负责。
 
-沙箱没有 cargo/rustc，本地未编译；由 `.github/workflows/rust.yml` 在 GitHub Actions 验证。
+沙箱没有 cargo/rustc 时以 GitHub Actions 为准；当前本地与 CI 均已验证。
+
+## Python 参考实现
+
+`python/moyu_core_time/` 是同一契约的 Python 实现，供 api/worker/pipeline 使用：
+
+- 导出 `SourceTime`、`DosTime`、`PlanEntry`、`TimePlan`；
+- `plan_times(sources, target_epoch, utc_offset_seconds)`；
+- `dos_from_unix(epoch_seconds, utc_offset_seconds)`；
+- `civil_from_days`、`floor_dos_second`；
+- 错误通过 `TimeError.code` 区分：`empty`、`target_not_later`、`dos_out_of_range`、`overflow`。
+
+Python 与 Rust 实现必须通过同一套时间向量；当前 `tests/test_core_time.py` 覆盖 DOS 字、公历转换、固定 offset、相对时间计划与错误分支。
