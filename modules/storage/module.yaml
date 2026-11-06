@@ -2,9 +2,10 @@ name: storage
 status: draft
 summary: 上传暂存、资产、任务、输出、预览缓存、配额和清理。
 interfaces:
-  - AssetStore、路径/配额/清理接口
+  - AssetStore、JobStore、路径/配额/清理接口
 dependencies: contracts
 docs: docs/index.md
 history: history/index.md
 wiki: wiki/index.md
-tests: []
+tests:
+  - tests/test_storage.py

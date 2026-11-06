@@ -1,6 +1,6 @@
 # storage 模块文档
 
-状态：v0.0.1 架构草稿，尚未实现。
+状态：v0.0.1 阶段 2 最小实现（Python）。
 
 ## 职责
 
@@ -10,7 +10,7 @@
 
 ## 非职责
 
-不做 HTTP、不生成预览、不解析媒体格式。
+不做 HTTP、不生成预览、不解析媒体格式、不管理上传协议。
 
 ## 依赖
 
@@ -18,16 +18,71 @@ contracts
 
 ## 接口
 
-AssetStore、路径/配额/清理接口
+Python 包位于 `src/moyu_storage/`：
+
+- `Storage(data_root, quota_bytes=0)`
+  - `ensure_layout()`、`connect()`、`used_bytes()`、`check_quota(additional=0)`
+  - `upload_path` / `asset_path` / `job_dir` / `output_path` / `preview_path`
+  - `cleanup(upload_ttl_seconds=None, preview_ttl_seconds=None)`
+- `AssetStore(storage)`：`register_asset`、`get_asset`、`path_for`、`open_asset`、`list_assets`、`delete_asset`
+- `JobStore(storage)`：`create_job`、`get_job`、`list_jobs`、`update_status`、`cancel_job`、`append_event`、`events`
+- `StorageError`：`code` / `message` / `details`
+
+## 目录布局
+
+```text
+<dataRoot>/
+├─ uploads/<session-id>/data
+├─ assets/<asset-id>
+├─ jobs/<job-id>/
+├─ outputs/<job-id>/<name>
+├─ preview/<asset-id>/<profile>/
+└─ state.db
+```
+
+ID 由模块生成（UUID），路径不接受用户输入；所有路径解析后必须仍在数据根目录内。
+
+## 数据模型
+
+- `Asset`：id、original_name、path、size、sha256、media_type、created_at。
+- `Job`：id、status、request(JSON)、progress、error、created_at、updated_at。
+- `JobStore` 状态机：
+
+```text
+created → queued → running → verifying → succeeded
+                  ↘ failed      ↘ failed
+created/queued/running → canceled
+```
+
+- `job_events` 记录阶段事件，不进入项目 `history/`。
+
+## 配额与清理
+
+- `quotaBytes <= 0` 表示不限制；否则登记资产前检查已用空间。
+- `cleanup` 删除过期上传会话目录与预览 profile；删除空资产目录。
+- 清理只处理 `uploads/` 与 `preview/`，不删除已登记资产和任务输出。
 
 ## 失败模式
 
-磁盘满、权限、路径逃逸、配额、孤儿文件。
+磁盘满、权限不足、路径逃逸、配额超限、任务状态非法、资产不存在、数据库不可用。
 
 ## 测试
 
-路径安全、配额、清理、并发写、重启恢复。
+`tests/test_storage.py` 覆盖：
+
+- 目录布局与路径逃逸拒绝；
+- 资产登记/读取/删除与 sha256；
+- 配额拒绝时不移动源文件；
+- 任务状态机、取消、终态保护、事件；
+- 新实例重启后读取同一数据库；
+- 上传与预览 TTL 清理。
+
+运行：
+
+```bash
+python3 -m unittest discover -s modules/storage/tests -v
+```
 
 ## 替换点
 
-本地 FS → NAS/S3；通过同一接口。
+本地 FS → NAS/S3；SQLite → 其他元数据存储。替换必须保持 ID 策略、路径安全、配额、TTL 与状态机语义。

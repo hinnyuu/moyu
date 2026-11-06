@@ -15,6 +15,7 @@
 - [2026-11-06 pipeline 阶段 1 最小闭环](commits/2026-11-06-pipeline-implementation.md)
 - [2026-11-06 修复 media-metadata 测试在 CI 的素材探测](commits/2026-11-06-fix-media-test-ci.md)
 - [2026-11-06 config 阶段 2 最小实现](commits/2026-11-06-config-implementation.md)
+- [2026-11-06 storage 阶段 2 最小实现](commits/2026-11-06-storage-implementation.md)
 
 ## 决策记录（ADR）
 
