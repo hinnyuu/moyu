@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from moyu_zip import (
+    DEFAULT_CHUNK,
+    DEFAULT_TZ,
+    MoyuError,
+    format_epoch,
+    human_size,
+    parse_size,
+    plan_pack,
+    resolve_timezone,
+    write_zip,
+)
+from moyu_media import MetadataError, build_metadata_patches
+
+
+def size_type(value):
+    try:
+        return parse_size(value)
+    except MoyuError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(
+        description="把一组渲染文件打包成只含 DOS mtime 的交付 ZIP，不修改源文件。"
+    )
+    parser.add_argument("-o", "--output", required=True, help="输出 ZIP 路径")
+    parser.add_argument(
+        "--target",
+        default="now",
+        help="最新文件的目标时间，now 或 'YYYY-MM-DD HH:MM:SS'",
+    )
+    parser.add_argument(
+        "--tz", default=DEFAULT_TZ, help=f"时区，默认 {DEFAULT_TZ}"
+    )
+    parser.add_argument("--prefix", default="", help="ZIP 内统一前缀")
+    parser.add_argument("--force", action="store_true", help="覆盖已存在的输出")
+    parser.add_argument("--dry-run", action="store_true", help="只打印计划，不写 ZIP")
+    parser.add_argument("--deflate", action="store_true", help="使用 deflate 压缩")
+    parser.add_argument(
+        "--keep-metadata",
+        action="store_true",
+        help="保留文件内部元数据（默认改写）",
+    )
+    parser.add_argument(
+        "--strict-metadata",
+        action="store_true",
+        help="遇到无法确认或无法改写的元数据时直接失败",
+    )
+    parser.add_argument(
+        "--chunk-size",
+        default=DEFAULT_CHUNK,
+        type=size_type,
+        help="读写块大小，默认 1M",
+    )
+    parser.add_argument("--manifest", help="输出 JSON 时间清单")
+    parser.add_argument("--follow-symlinks", action="store_true", help="跟随符号链接")
+    parser.add_argument("--no-fsync", action="store_true", help="写入后不 fsync")
+    parser.add_argument("--json", action="store_true", help="输出 JSON 摘要")
+    verbosity = parser.add_mutually_exclusive_group()
+    verbosity.add_argument("-v", "--verbose", action="store_true", help="逐文件输出")
+    verbosity.add_argument("-q", "--quiet", action="store_true", help="只输出错误")
+    parser.add_argument("inputs", nargs="+", help="文件或目录")
+    return parser
+
+
+def print_plan(plans, tz, verbose):
+    total = sum(plan.size for plan in plans)
+    for plan in plans:
+        if verbose:
+            print(
+                f"{plan.source} -> {plan.arcname}  "
+                f"mtime {format_epoch(plan.target_epoch, tz)}"
+            )
+    print(
+        f"将打包 {len(plans)} 个文件，共 {human_size(total)}，"
+        f"mtime 范围 {format_epoch(min(p.target_epoch for p in plans), tz)} "
+        f".. {format_epoch(max(p.target_epoch for p in plans), tz)}"
+    )
+
+
+def print_summary(result, tz_name):
+    print(
+        f"moyu-pack: {result['entries']} 个文件 -> {result['output']} "
+        f"({human_size(result['archive_bytes'])})"
+    )
+    print(f"  时区: {tz_name}")
+    print(f"  目标时间: {format_epoch(result['target_epoch'], resolve_timezone(tz_name))}")
+    print(
+        f"  mtime 范围: {format_epoch(result['min_epoch'], resolve_timezone(tz_name))} "
+        f".. {format_epoch(result['max_epoch'], resolve_timezone(tz_name))}"
+    )
+    mode = "deflate" if result["deflate"] else "store"
+    print(f"  模式: {mode}, 块大小: {human_size(result['chunk_size'])}")
+    if result.get("rewrite_metadata"):
+        if result["metadata_fields"]:
+            print(
+                f"  元数据: 改写 {result['metadata_fields']} 个字段 / "
+                f"{result['metadata_files']} 个文件"
+            )
+        else:
+            print("  元数据: 未发现可改写字段")
+    else:
+        print("  元数据: 保留原样")
+    for note in result.get("metadata_notes") or []:
+        print(f"  元数据提示: {note}")
+    for problem in result.get("metadata_strict_problems") or []:
+        print(f"  元数据严格检查: {problem}")
+    speed = result["throughput_bytes_s"] / (1024 * 1024) if result["elapsed_sec"] else 0
+    print(
+        f"  耗时: {result['elapsed_sec']:.2f}s, "
+        f"吞吐: {speed:.1f} MiB/s, 校验: "
+        f"{'OK' if result['verified'] else '跳过'}"
+    )
+
+
+def main(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.manifest and os.path.abspath(args.manifest) == os.path.abspath(args.output):
+        print("moyu-pack: --manifest 不能与 --output 相同", file=sys.stderr)
+        return 1
+    if args.keep_metadata and args.strict_metadata:
+        print("moyu-pack: --keep-metadata 与 --strict-metadata 不能同时使用", file=sys.stderr)
+        return 1
+    try:
+        resolve_timezone(args.tz)
+        plans, tz, target_ns, delta_ns = plan_pack(
+            args.inputs,
+            target=args.target,
+            tz_name=args.tz,
+            prefix=args.prefix,
+            follow_symlinks=args.follow_symlinks,
+            output=args.output,
+            exclude=[args.manifest] if args.manifest else [],
+        )
+    except (MoyuError, OSError) as exc:
+        print(f"moyu-pack: {exc}", file=sys.stderr)
+        return 1
+
+    if args.target != "now" and target_ns > time.time_ns() + 1_000_000_000:
+        print("moyu-pack: 警告: 目标时间在未来", file=sys.stderr)
+
+    if args.dry_run:
+        if not args.quiet:
+            print_plan(plans, tz, args.verbose)
+            if not args.keep_metadata:
+                try:
+                    total_patches = 0
+                    strict_problems = []
+                    for plan in plans:
+                        info = build_metadata_patches(
+                            plan.source, plan.target_epoch, tz
+                        )
+                        if info.records:
+                            total_patches += len(info.records)
+                        else:
+                            total_patches += sum(
+                                1
+                                for patch in info.patches
+                                if not patch.field.endswith("CRC")
+                            )
+                        strict_problems.extend(info.strict_problems)
+                    if args.strict_metadata and strict_problems:
+                        print(
+                            "moyu-pack: 严格元数据检查失败: "
+                            + "; ".join(sorted(set(strict_problems))),
+                            file=sys.stderr,
+                        )
+                        return 1
+                    print(f"元数据: 计划改写 {total_patches} 个字段")
+                except MetadataError as exc:
+                    print(f"moyu-pack: {exc}", file=sys.stderr)
+                    return 1
+        return 0
+
+    try:
+        result = write_zip(
+            plans,
+            args.output,
+            args.tz,
+            target_ns,
+            delta_ns,
+            deflate=args.deflate,
+            chunk_size=args.chunk_size,
+            force=args.force,
+            fsync=not args.no_fsync,
+            manifest_path=args.manifest,
+            verify=True,
+            rewrite_metadata=not args.keep_metadata,
+            strict_metadata=args.strict_metadata,
+        )
+    except (MoyuError, OSError) as exc:
+        print(f"moyu-pack: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    elif not args.quiet:
+        if args.verbose:
+            print_plan(plans, tz, True)
+        print_summary(result, args.tz)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

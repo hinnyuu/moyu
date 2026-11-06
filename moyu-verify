@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from moyu_zip import DEFAULT_TZ, MoyuError, verify_zip
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(
+        description="校验 moyu-pack 产出的 ZIP 是否无时间类 extra field、时间是否正确。"
+    )
+    parser.add_argument("archive", help="要校验的 ZIP")
+    parser.add_argument("--manifest", help="moyu-pack 输出的 JSON 时间清单")
+    parser.add_argument(
+        "--tz", default=None, help=f"时区，默认取 manifest 或 {DEFAULT_TZ}"
+    )
+    parser.add_argument("--relaxed", action="store_true", help="放宽未知 extra field")
+    parser.add_argument(
+        "--allow-unicode-extra",
+        action="store_true",
+        help="允许 Unicode path/comment extra field",
+    )
+    parser.add_argument(
+        "--allow-mtime-ut",
+        action="store_true",
+        help="允许只含 mtime 的 UT 0x5455",
+    )
+    parser.add_argument("--require-store", action="store_true", help="要求全部条目 STORE")
+    parser.add_argument("--check-crc", action="store_true", help="校验 CRC（会读全量数据）")
+    parser.add_argument("--no-future", action="store_true", help="拒绝未来 mtime")
+    parser.add_argument("--json", action="store_true", help="输出 JSON 结果")
+    parser.add_argument("-q", "--quiet", action="store_true", help="成功时不输出摘要")
+    return parser
+
+
+def main(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    expected = None
+    manifest_tz = None
+    if args.manifest:
+        try:
+            with open(args.manifest, "r", encoding="utf-8") as handle:
+                expected = json.load(handle)
+            if isinstance(expected, dict):
+                manifest_tz = expected.get("tz")
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"moyu-verify: 无法读取 manifest: {exc}", file=sys.stderr)
+            return 1
+
+    tz_name = args.tz or manifest_tz or DEFAULT_TZ
+    try:
+        result = verify_zip(
+            args.archive,
+            expected=expected,
+            tz_name=tz_name,
+            strict=not args.relaxed,
+            allow_unicode_extra=args.allow_unicode_extra,
+            allow_mtime_ut=args.allow_mtime_ut,
+            require_store=args.require_store,
+            check_crc=args.check_crc,
+            no_future=args.no_future,
+        )
+    except MoyuError as exc:
+        print(f"moyu-verify: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    elif not args.quiet:
+        if result["ok"]:
+            print(
+                f"moyu-verify: OK, {result['entries']} 个条目, "
+                f"{result['min_time']} .. {result['max_time']}"
+            )
+        else:
+            print(f"moyu-verify: 失败，{len(result['problems'])} 个问题")
+        extras = ", ".join(result["extra_ids"]) if result["extra_ids"] else "无"
+        print(f"  extra field: {extras}")
+        compression = ", ".join(
+            f"{name}={count}" for name, count in result["compression"].items()
+        )
+        print(f"  压缩方式: {compression or '无'}")
+        print(f"  归档 comment: {result['archive_comment']} 字节")
+
+    if not result["ok"]:
+        for problem in result["problems"]:
+            print(f"  - {problem}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
