@@ -6,5 +6,7 @@
 4. 每次提交更新本模块 `history/`，并同步 `docs/`、`wiki/`（如适用）。
 5. 模块接口和替换点必须与 `docs/contracts/` 一致。
 6. 不把历史流水账写进 `docs/` 或 `wiki/`。
+7. 暗色主题是 v0.0.1 验收项；任何新页面/组件必须同时通过亮/暗两套主题。
+8. 不在组件里散落硬编码颜色；使用语义化 design tokens。
 
 阅读：本模块 `docs/index.md`、`history/index.md`、`wiki/index.md`，以及根 `AGENTS.md`。

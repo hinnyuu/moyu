@@ -3,6 +3,7 @@
 ## 提交记录
 
 - [2026-11-06 v0.0.1 架构草稿](commits/2026-11-06-v0.0.1-architecture-draft.md)
+- [2026-11-06 WebUI 暗色主题要求](commits/2026-11-06-webui-dark-mode.md)
 
 ## 决策记录（ADR）
 

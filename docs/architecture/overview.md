@@ -150,6 +150,7 @@ web（只依赖生成的 API 客户端）
 - 单镜像、多容器、单 Podman pod；不拆镜像，不使用 Compose。
 - `api`、`worker`、`preview`、`tusd` 从第一天分开；`gateway` 在 standalone 模式独立容器。
 - 默认服务端媒体处理；WASM 是早期可选路径。
+- WebUI 必须支持 system/light/dark 主题；暗色是 v0.0.1 验收项。
 - 端口不写死，使用配置；host/bridge 均可，端口变更需要相应重启或重建。
 - 配置多文件、按模块划分，WebUI 统一编辑；部署拓扑不由 WebUI 直接控制 Podman。
 - 证书热重载默认轮询 + API；token 由 WebUI 生成/轮换/复制；API 只触发重读挂载文件。

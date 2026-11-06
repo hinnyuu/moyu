@@ -26,3 +26,4 @@
 - [操作：配置与 WebUI](operations/configuration.md)
 - [操作：备份与恢复](operations/backup-restore.md)
 - [开发：模块维护流程](development/module-maintenance.md)
+- [开发：WebUI 主题与暗色模式](development/webui-style.md)

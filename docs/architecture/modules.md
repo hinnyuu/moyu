@@ -32,7 +32,7 @@
 | `preview` | 媒体探测、缩略图、图片代理、视频代理/HLS | contracts, storage | ffmpeg/libvips/OpenImageIO |
 | `api` | HTTP API、认证、任务/上传接口、Web 静态文件 | contracts, pipeline, storage, uploads, preview, config | FastAPI → 其他 |
 | `worker` | 后台打包任务、进度、取消、恢复 | pipeline, storage, config | 单进程 → 队列 |
-| `web` | React + Vite + TypeScript 静态 SPA | contracts 生成客户端 | 框架可替换 |
+| `web` | React + Vite + TypeScript 静态 SPA，支持 system/light/dark 主题 | contracts 生成客户端 | 框架可替换 |
 | `wasm-client` | 可选浏览器 ZIP/预览转码；Rust WASM | contracts, core-rust | 可禁用/替换 |
 | `gateway` | Rust TLS、反向代理、证书热重载、双栈、token API | contracts, config | Rust 实现可替换 |
 | `deploy` | Podman/Quadlet、卷、端口、GHCR、运维文档 | 全部模块的运维事实 | 部署实现可替换 |

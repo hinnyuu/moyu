@@ -69,6 +69,7 @@
 - Rust fmt/clippy/test/deny/audit。
 - WASM target check + wasm-pack。
 - Web lint/typecheck/unit/E2E（Playwright）。
+- Web 主题：light/dark/system 切换、刷新持久化、首屏无闪烁、关键页面截图基线、对比度/焦点/禁用态检查；媒体预览不得随主题反相。
 - `agent-gate` 按 commit 检查。
 - Podman smoke test 可在自托管 runner 或本地执行；GitHub 托管 runner 做逻辑测试。
 
