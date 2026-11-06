@@ -20,3 +20,7 @@ python3 modules/agent-gate/src/agent_gate.py check --base origin/main
 ```
 
 它只检查“文档/history/wiki 有没有漏、有没有混”，不评价代码质量。
+
+## PR 检查
+
+PR 里 GitHub 会临时造一个 merge commit 来跑 CI。它不是你真正的提交，也没有 history。工作流会改为 checkout PR 的 head SHA，避免把这个临时提交当成项目提交检查。
