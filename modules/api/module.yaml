@@ -7,4 +7,6 @@ dependencies: contracts, pipeline, storage, uploads, preview, config
 docs: docs/index.md
 history: history/index.md
 wiki: wiki/index.md
-tests: []
+tests:
+  - tests/test_auth.py
+  - tests/test_api.py

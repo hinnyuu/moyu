@@ -19,6 +19,7 @@
 - [2026-11-06 uploads 阶段 2 最小实现](commits/2026-11-06-uploads-implementation.md)
 - [2026-11-06 worker 阶段 2 最小实现](commits/2026-11-06-worker-implementation.md)
 - [2026-11-06 preview 阶段 2 最小实现](commits/2026-11-06-preview-implementation.md)
+- [2026-11-06 api 阶段 2 最小实现](commits/2026-11-06-api-implementation.md)
 
 ## 决策记录（ADR）
 

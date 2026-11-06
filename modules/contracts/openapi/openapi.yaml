@@ -20,10 +20,16 @@ paths:
   /api/v1/auth/session:
     post:
       summary: 登录并建立会话
+      description: 首次使用 bootstrap token 与管理员密码；之后使用密码。写操作需要 X-CSRF-Token。
       security: []
       responses:
         "204":
           description: 登录成功
+    get:
+      summary: 读取当前会话
+      responses:
+        "200":
+          description: 用户名、CSRF token 与过期时间
     delete:
       summary: 退出登录
       responses:
@@ -36,6 +42,31 @@ paths:
       responses:
         "201":
           description: 已创建
+  /api/v1/uploads/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: 读取上传会话
+      responses:
+        "200":
+          description: 会话状态与偏移
+  /api/v1/uploads/{id}/finish:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      summary: 完成上传并登记资产
+      description: tusd 完成钩子或开发模式直接调用；需要 X-CSRF-Token。
+      responses:
+        "201":
+          description: 已登记资产
   /api/v1/jobs:
     get:
       summary: 列出任务
