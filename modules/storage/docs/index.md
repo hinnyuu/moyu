@@ -25,7 +25,7 @@ Python 包位于 `src/moyu_storage/`：
   - `upload_path` / `asset_path` / `job_dir` / `output_path` / `preview_path`
   - `cleanup(upload_ttl_seconds=None, preview_ttl_seconds=None)`
 - `AssetStore(storage)`：`register_asset`、`get_asset`、`path_for`、`open_asset`、`list_assets`、`delete_asset`
-- `JobStore(storage)`：`create_job`、`get_job`、`list_jobs`、`update_status`、`cancel_job`、`append_event`、`events`
+- `JobStore(storage)`：`create_job`、`get_job`、`list_jobs`、`claim_next`、`recover_stale`、`update_status`、`cancel_job`、`append_event`、`events`
 - `StorageError`：`code` / `message` / `details`
 
 ## 目录布局
@@ -55,6 +55,11 @@ created/queued/running → canceled
 ```
 
 - `job_events` 记录阶段事件，不进入项目 `history/`。
+
+领取与恢复：
+
+- `claim_next()` 用条件更新原子领取最早的 `queued` 任务并置为 `running`；
+- `recover_stale()` 把 `running`/`verifying` 任务重置为 `queued`，供 worker 重启后重试。
 
 ## 配额与清理
 

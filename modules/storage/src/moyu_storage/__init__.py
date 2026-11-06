@@ -421,6 +421,32 @@ class JobStore:
             rows = conn.execute(query, params).fetchall()
         return [self._row_to_job(row) for row in rows]
 
+    def claim_next(self):
+        now = _now()
+        with self.storage.connect() as conn:
+            row = conn.execute(
+                "SELECT id FROM jobs WHERE status='queued' ORDER BY created_at LIMIT 1"
+            ).fetchone()
+            if row is None:
+                return None
+            changed = conn.execute(
+                "UPDATE jobs SET status='running', updated_at=? WHERE id=? AND status='queued'",
+                (now, row["id"]),
+            ).rowcount
+        if changed != 1:
+            return None
+        return self.get_job(row["id"])
+
+    def recover_stale(self):
+        now = _now()
+        with self.storage.connect() as conn:
+            changed = conn.execute(
+                "UPDATE jobs SET status='queued', error=?, updated_at=?"
+                " WHERE status IN ('running', 'verifying')",
+                ("worker restarted; requeued", now),
+            ).rowcount
+        return changed
+
     def update_status(self, job_id, status, progress=None, error=None):
         if status not in JOB_STATUSES:
             raise StorageError("job_status_invalid", f"未知任务状态: {status}")
