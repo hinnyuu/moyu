@@ -8,3 +8,5 @@
 
 阅读顺序：`docs/index.md` → `history/index.md` → `wiki/index.md`。
 - Phase 0 已建立 Rust core crate 骨架；业务实现尚未开始。
+
+- 第一阶段已实现 `plan_times` / `dos_from_unix`；由 Rust CI 验证。

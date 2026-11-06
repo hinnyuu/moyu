@@ -20,3 +20,4 @@
 - [2026-11-06 Phase 0：agent-gate、契约、配置 schema 与 Rust 骨架](commits/2026-11-06-phase0-agent-gate-contracts-config-rust.md)
 - [2026-11-06 修复 agent-gate PR checkout](commits/2026-11-06-fix-agent-gate-pr-checkout.md)
 - [2026-11-06 修复 agent-gate 空范围与 merge commit](commits/2026-11-06-fix-agent-gate-empty-range.md)
+- [2026-11-06 core-time 最小实现与 Rust CI](commits/2026-11-06-core-time-minimal-rust-ci.md)

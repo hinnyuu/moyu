@@ -96,3 +96,16 @@ cargo audit
 - 网关需要独立依赖冻结和安全审计。
 
 当前规模不建议拆。
+
+## Rust CI
+
+`.github/workflows/rust.yml` 在 GitHub Actions 中验证：
+
+- `cargo fmt --all --check`
+- `cargo check --workspace`
+- `cargo test --workspace`
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- `cargo check -p moyu-wasm-client --target wasm32-unknown-unknown`
+- `cargo build -p moyu-gateway --release --target x86_64-unknown-linux-musl`
+
+本地沙箱没有 cargo 时，以 CI 结果为准。

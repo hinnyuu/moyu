@@ -32,9 +32,21 @@ TimePolicy、PackPlan 时间字段；Rust `moyu-core`
 
 纯函数实现可替换；Rust 与 Python 实现必须通过同一套时间向量 conformance。
 
-## Rust 骨架
+## 最小实现
 
-- workspace member：`modules/core-time/rust`，package `moyu-core`。
-- 当前只有无逻辑占位 `CRATE_NAME`，不包含时间算法。
-- 沙箱没有 cargo/rustc，未编译；实现阶段在 CI/目标机验证。
-- 时间算法实现后必须通过固定时间向量 conformance。
+`moyu-core` 已实现第一阶段时间策略：
+
+- `SourceTime { id, mtime_ns }`
+- `DosTime { year, month, day, hour, minute, second }`
+- `TimePlan { target_epoch, delta_ns, utc_offset_seconds, entries }`
+- `plan_times(sources, target_epoch, utc_offset_seconds)`：
+  - 空输入报错；
+  - 目标时间必须晚于最新源 mtime；
+  - 所有文件使用同一个 delta；
+  - 最新文件落在目标 epoch；
+  - DOS 秒按 2 秒向下取整；
+  - 1980–2107 范围校验；
+  - 溢出时返回 `Overflow`。
+- `dos_from_unix` 使用固定 UTC offset，不依赖系统时区/时区数据库；IANA 时区解析由上层配置层负责。
+
+沙箱没有 cargo/rustc，本地未编译；由 `.github/workflows/rust.yml` 在 GitHub Actions 验证。
