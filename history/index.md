@@ -12,6 +12,7 @@
 - [2026-11-06 archive-zip 阶段 1 最小实现](commits/2026-11-06-archive-zip-implementation.md)
 - [2026-11-06 media-metadata 阶段 1 最小实现](commits/2026-11-06-media-metadata-implementation.md)
 - [2026-11-06 core-time Python 参考实现](commits/2026-11-06-core-time-python-reference.md)
+- [2026-11-06 pipeline 阶段 1 最小闭环](commits/2026-11-06-pipeline-implementation.md)
 
 ## 决策记录（ADR）
 

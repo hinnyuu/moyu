@@ -2,8 +2,10 @@
 
 打包业务编排：扫描/资产输入、时间计划、媒体补丁、ZIP 写入、manifest、校验。
 
-- 当前状态：v0.0.1 架构草稿，尚未实现。
+- 当前状态：v0.0.1 阶段 1 最小实现（Python）。
 - 依赖：contracts, core-time, media-metadata, archive-zip
 - 接口：PackPlan、ArchiveWriter、MetadataAdapter
+- 实现：`src/moyu_pipeline/`
+- 测试：`tests/test_pipeline.py`
 
 阅读顺序：`docs/index.md` → `history/index.md` → `wiki/index.md`。

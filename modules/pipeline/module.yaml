@@ -7,4 +7,5 @@ dependencies: contracts, core-time, media-metadata, archive-zip
 docs: docs/index.md
 history: history/index.md
 wiki: wiki/index.md
-tests: []
+tests:
+  - tests/test_pipeline.py
