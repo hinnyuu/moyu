@@ -43,6 +43,11 @@ def commit_files(root, commit):
     )
 
 
+def is_merge_commit(root, commit):
+    parents = git(root, "rev-list", "--parents", "-n1", commit).split()
+    return len(parents) > 2
+
+
 def parse_frontmatter(path):
     text = path.read_text(encoding="utf-8")
     if not text.startswith("---\n"):
@@ -221,9 +226,11 @@ def check(root, base=None, staged=False, all_check=False, verbose=False):
         except RuntimeError as exc:
             errors.append(f"无法读取提交范围: {exc}")
             commits = []
-        if not commits:
-            errors.append(f"{base}..HEAD 没有提交")
         for commit in commits:
+            if is_merge_commit(root, commit):
+                if verbose:
+                    print(f"{commit[:12]}: merge commit，跳过 history 检查")
+                continue
             files = commit_files(root, commit)
             e, w = check_commit(root, commit[:12], files, verbose)
             errors.extend(e)

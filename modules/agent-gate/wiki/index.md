@@ -24,3 +24,7 @@ python3 modules/agent-gate/src/agent_gate.py check --base origin/main
 ## PR 检查
 
 PR 里 GitHub 会临时造一个 merge commit 来跑 CI。它不是你真正的提交，也没有 history。工作流会改为 checkout PR 的 head SHA，避免把这个临时提交当成项目提交检查。
+
+## 空范围与 merge commit
+
+main 已经合并后，`origin/main..HEAD` 可能为空，这是正常的，不是错误。PR 合并产生的多父 merge commit 也不会被要求单独写 history；真正功能提交在 PR head 里已经被检查。

@@ -34,6 +34,10 @@ class AgentGateTests(unittest.TestCase):
         errors = agent_gate.docs_history_leak(ROOT)
         self.assertEqual(errors, [])
 
+    def test_empty_range(self):
+        errors, warnings = agent_gate.check(ROOT, base="HEAD")
+        self.assertEqual(errors, [])
+
     def test_existing_commits(self):
         try:
             subprocess.run(

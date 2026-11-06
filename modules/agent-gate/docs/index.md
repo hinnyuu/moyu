@@ -54,3 +54,10 @@ ref  = pull_request.head.sha
 ```
 
 push 事件仍使用 `github.ref`。这样 agent-gate 始终检查真实提交，而不是 GitHub 的临时合并提交。
+
+## 空范围与 merge commit
+
+- 提交范围为空是合法的：表示当前 HEAD 没有待检查提交，不报错。
+- 多父 merge commit 是 GitHub/项目合并产物，不代表独立功能提交；agent-gate 跳过它的 history 检查。
+- PR 的普通提交由 head 提交逐个检查；合并提交不需要重复写 history。
+- push 工作流使用 `github.event.before` 作为 base，检查本次推送实际包含的提交；首次 push/空 before 回退到 `origin/main`。
