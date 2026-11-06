@@ -3,3 +3,6 @@ __pycache__/
 *.part
 /target/
 **/target/
+node_modules/
+modules/web/app/dist/
+*.tsbuildinfo

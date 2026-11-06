@@ -30,6 +30,13 @@ class AgentGateTests(unittest.TestCase):
         errors = agent_gate.check_links(ROOT)
         self.assertEqual(errors, [])
 
+    def test_links_skip_dependency_dirs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bad = Path(tmp) / "node_modules" / "pkg"
+            bad.mkdir(parents=True)
+            (bad / "README.md").write_text("[x](missing.md)\n", encoding="utf-8")
+            self.assertEqual(agent_gate.check_links(Path(tmp)), [])
+
     def test_docs_history_leak(self):
         errors = agent_gate.docs_history_leak(ROOT)
         self.assertEqual(errors, [])

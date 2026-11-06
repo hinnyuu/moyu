@@ -1,18 +1,28 @@
 # web 模块（人类说明）
 
-web 是你看到的界面。它负责上传、看进度、预览、改配置，不负责真正的打包计算。
+web 是浏览器里的操作界面：登录、上传、看任务、改配置。
+
+## 本地开发
+
+```bash
+cd modules/web/app
+npm ci
+VITE_API_PROXY=http://<api-host>:<api-port> npm run dev
+```
+
+Vite 会把 `/api` 代理到 API；生产构建用：
+
+```bash
+npm run build
+```
 
 ## 主题
 
-WebUI 必须支持亮色和暗色，默认跟随系统。右上角可以切换 `system / light / dark`，选择会被记住。暗色不是简单反色：背景、文字、边框、错误色、焦点环都要有独立设计，并且保证可读。
-
-## 什么时候会用到
-
-web 是你看到的界面。它负责上传、看进度、预览、改配置，不负责真正的打包计算。夜班/暗房环境用暗色，白天或投屏用亮色；媒体预览始终按原色显示，不跟着界面反相。
+右上角“主题”按钮在“跟随系统 → 亮色 → 暗色”之间切换，选择会记住。首屏由 `index.html` 的内联脚本在 React 之前应用主题，所以刷新不会先闪一下亮色。
 
 ## 相关
 
 - [模块 docs](../docs/index.md)：当前设计事实。
 - [模块 history](../history/index.md)：本模块历史。
-- [WebUI 主题与暗色模式](../../../wiki/development/webui-style.md)：完整说明和验收项。
-- 根 `docs/contracts/`：跨模块契约。
+- `wiki/development/webui-style.md`：视觉规范。
+- `modules/contracts/openapi/openapi.yaml`：HTTP 契约。

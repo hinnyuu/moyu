@@ -22,6 +22,7 @@
 - [2026-11-06 api 阶段 2 最小实现](commits/2026-11-06-api-implementation.md)
 - [2026-11-06 修复 API 预览测试在 CI 的缓存目录](commits/2026-11-06-fix-api-preview-test.md)
 - [2026-11-06 API 增加 tus 兼容分片端点](commits/2026-11-06-api-chunk-endpoint.md)
+- [2026-11-06 web 阶段 2 最小实现](commits/2026-11-06-web-implementation.md)
 
 ## 决策记录（ADR）
 

@@ -113,8 +113,9 @@ def validate_manifests(root):
 def check_links(root):
     errors = []
     link_re = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
+    excluded = {".git", "node_modules", "dist", "target", ".venv", "__pycache__"}
     for path in sorted(root.rglob("*.md")):
-        if ".git" in path.parts:
+        if any(part in excluded for part in path.parts):
             continue
         text = path.read_text(encoding="utf-8")
         for match in link_re.finditer(text):
