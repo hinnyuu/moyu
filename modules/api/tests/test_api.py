@@ -39,7 +39,12 @@ class ApiTests(unittest.TestCase):
         root = Path(self.tmp.name)
         self.storage = Storage(root / "data").ensure_layout()
         self.config = ConfigProvider(root / "config")
-        self.config.load()
+        loaded = self.config.load()
+        self.config.write(
+            "preview",
+            {"cacheDir": str(self.storage.preview_dir)},
+            revision=loaded.revisions["preview"],
+        )
         token_file = root / "bootstrap.txt"
         token_file.write_text(BOOTSTRAP + "\n", encoding="utf-8")
         self.auth = AuthManager(
