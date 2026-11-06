@@ -1,0 +1,10 @@
+name: worker
+status: draft
+summary: 后台打包任务：拉取 job、执行 pipeline、更新进度、取消、恢复。
+interfaces:
+  - JobStore、PackPlan、ArchiveWriter
+dependencies: pipeline, storage, config
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests: []

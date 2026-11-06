@@ -1,0 +1,11 @@
+name: agent-gate
+status: draft
+summary: 文档/history/wiki/schema/链接/契约门禁，pre-commit 与 CI。
+interfaces:
+  - check 命令；commit 遍历
+dependencies: 仓库自身
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests:
+  - python3 -m unittest discover -s modules/agent-gate/tests -v

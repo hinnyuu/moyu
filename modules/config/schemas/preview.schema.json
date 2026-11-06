@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyu.local/schemas/preview.schema.json",
+  "title": "preview config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "enabled", "cacheDir", "concurrency", "maxMemoryBytes", "timeoutSeconds"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "enabled": { "type": "boolean" },
+    "cacheDir": { "type": "string" },
+    "concurrency": { "type": "integer", "minimum": 1, "maximum": 8 },
+    "maxMemoryBytes": { "type": "integer", "minimum": 67108864 },
+    "timeoutSeconds": { "type": "integer", "minimum": 5 },
+    "profiles": { "type": "object", "additionalProperties": true }
+  }
+}

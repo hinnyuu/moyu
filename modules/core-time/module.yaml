@@ -1,0 +1,10 @@
+name: core-time
+status: draft
+summary: 时间策略、目标时间映射、DOS/EXIF/QuickTime/Matroska 时间换算，以及 target-neutral 的 Rust core crate。
+interfaces:
+  - TimePolicy、PackPlan 时间字段；Rust `moyu-core`
+dependencies: contracts
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests: []

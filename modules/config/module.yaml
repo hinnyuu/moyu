@@ -1,0 +1,10 @@
+name: config
+status: draft
+summary: 配置目录加载、schema 校验、默认值、原子写入、迁移、last-known-good 和变更审计。
+interfaces:
+  - ConfigProvider：load / validate / write / last_known_good
+dependencies: contracts
+docs: docs/index.md
+history: history/index.md
+wiki: wiki/index.md
+tests: []

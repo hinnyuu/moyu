@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyu.local/schemas/moyu.schema.json",
+  "title": "moyu global config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "timezone", "modules"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "timezone": { "type": "string", "minLength": 1 },
+    "modules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "gateway": { "type": "boolean" },
+        "api": { "type": "boolean" },
+        "worker": { "type": "boolean" },
+        "preview": { "type": "boolean" },
+        "storage": { "type": "boolean" },
+        "uploads": { "type": "boolean" }
+      }
+    }
+  }
+}

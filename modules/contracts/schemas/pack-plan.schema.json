@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyu.local/schemas/pack-plan.schema.json",
+  "title": "PackPlan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["archiveName", "timezone", "targetEpoch", "entries"],
+  "properties": {
+    "archiveName": { "type": "string", "minLength": 1 },
+    "timezone": { "type": "string", "minLength": 1 },
+    "targetEpoch": { "type": "integer" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "arcname", "targetEpoch", "dosTime", "metadata"],
+        "properties": {
+          "source": { "type": "string", "minLength": 1 },
+          "arcname": { "type": "string", "minLength": 1 },
+          "targetEpoch": { "type": "integer" },
+          "dosTime": {
+            "type": "array",
+            "prefixItems": [
+              { "type": "integer", "minimum": 1980, "maximum": 2107 },
+              { "type": "integer", "minimum": 1, "maximum": 12 },
+              { "type": "integer", "minimum": 1, "maximum": 31 },
+              { "type": "integer", "minimum": 0, "maximum": 23 },
+              { "type": "integer", "minimum": 0, "maximum": 59 },
+              { "type": "integer", "minimum": 0, "maximum": 58 }
+            ],
+            "minItems": 6,
+            "maxItems": 6
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["format", "mode", "patches", "strictProblems", "notes"],
+            "properties": {
+              "format": { "type": "string" },
+              "mode": { "enum": ["patches", "materialize", "none"] },
+              "patches": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["offset", "old", "new", "field"],
+                  "properties": {
+                    "offset": { "type": "integer", "minimum": 0 },
+                    "old": { "type": "string" },
+                    "new": { "type": "string" },
+                    "field": { "type": "string" }
+                  }
+                }
+              },
+              "strictProblems": { "type": "array", "items": { "type": "string" } },
+              "notes": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

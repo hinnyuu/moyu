@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyu.local/schemas/gateway-token.schema.json",
+  "title": "GatewayTokenMetadata",
+  "description": "数据库中只保存 token 元数据和哈希；明文只在生成时返回一次。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["label", "createdAt", "lastUsedAt"],
+  "properties": {
+    "label": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "lastUsedAt": { "type": ["string", "null"], "format": "date-time" }
+  }
+}
