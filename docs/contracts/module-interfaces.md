@@ -242,11 +242,12 @@ capabilities() -> {format, metadata, maxInputBytes, maxEntries}
 pack(files, target_epoch, utc_offset_seconds) -> ZIP bytes
 PackBuilder.add_file(name, mtime_ns, data)
 PackBuilder.finish(target_epoch, utc_offset_seconds) -> ZIP bytes
-transcode(file, profile) -> preview artifact   # 待实现
+transcode(data, maxWidth, maxHeight, format, quality) -> image bytes
+  # 仅图片 PNG/JPEG；视频转码未实现
 ```
 
 - 可选能力，默认关闭；
-- STORE ZIP 核心、WASM 绑定与镜像 wasm 产物已存在；Web 懒加载，转码待补；
+- STORE ZIP 核心、WASM 绑定、镜像产物与 Web 懒加载已存在；图片转码已实现，视频转码待补；
 - 客户端 ZIP 只保证 DOS mtime，不承诺内部元数据改写；
 - 能力检测失败时自动回退服务端；
 - 不阻塞主链路。

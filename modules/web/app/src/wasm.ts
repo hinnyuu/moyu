@@ -6,6 +6,13 @@ interface WasmModule {
     finish(targetEpoch: bigint, utcOffsetSeconds: number): Uint8Array;
     free?: () => void;
   };
+  transcode?: (
+    data: Uint8Array,
+    maxWidth: number,
+    maxHeight: number,
+    format: string,
+    quality: number,
+  ) => Uint8Array;
 }
 
 let cached: Promise<WasmModule | null> | null = null;
@@ -31,6 +38,22 @@ export async function wasmCapabilities(): Promise<string | null> {
   if (!module) return null;
   try {
     return module.capabilities();
+  } catch {
+    return null;
+  }
+}
+
+export async function transcodeImage(
+  file: Blob,
+  maxWidth = 512,
+  maxHeight = 512,
+): Promise<Blob | null> {
+  const module = await loadWasmClient();
+  if (!module?.transcode) return null;
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const output = module.transcode(bytes, maxWidth, maxHeight, "jpeg", 85);
+    return new Blob([output as unknown as BlobPart], { type: "image/jpeg" });
   } catch {
     return null;
   }

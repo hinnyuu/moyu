@@ -13,7 +13,7 @@ import {
 import type { QueueItem } from "../queue";
 import { formatError } from "./Login";
 import { HlsPreview } from "../components/HlsPreview";
-import { packLocally, wasmCapabilities } from "../wasm";
+import { packLocally, transcodeImage, wasmCapabilities } from "../wasm";
 
 function defaultTarget(): string {
   const value = new Date(Date.now() + 10 * 60 * 1000);
@@ -34,6 +34,7 @@ export function UploadPage() {
   const [wasmReady, setWasmReady] = useState(false);
   const [wasmInfo, setWasmInfo] = useState("");
   const [clientZip, setClientZip] = useState("");
+  const [localPreview, setLocalPreview] = useState("");
   const pauseRef = useRef(false);
   const timezone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -136,6 +137,25 @@ export function UploadPage() {
     await deleteBlob(item.id);
     persist(items.filter((entry) => entry.id !== item.id));
     if (selected === item.assetId) setSelected("");
+  }
+
+  async function buildLocalPreview() {
+    setError("");
+    setClientZip("");
+    const first = items[0];
+    if (!first) return;
+    const blob = await getBlob(first.id);
+    if (!blob) {
+      setError("本地文件缓存丢失");
+      return;
+    }
+    const converted = await transcodeImage(blob, 512, 512);
+    if (!converted) {
+      setError("WASM 无法转码该文件（当前仅支持图片）");
+      return;
+    }
+    if (localPreview) URL.revokeObjectURL(localPreview);
+    setLocalPreview(URL.createObjectURL(converted));
   }
 
   async function buildClientZip() {
@@ -304,8 +324,20 @@ export function UploadPage() {
             >
               本地生成 ZIP
             </button>
+            <button
+              className="btn"
+              onClick={() => void buildLocalPreview()}
+              disabled={items.length === 0 || busy !== ""}
+            >
+              本地预览转码
+            </button>
             <span className="muted mono">{wasmInfo}</span>
           </div>
+          {localPreview && (
+            <div className="media-preview" style={{ marginTop: 12 }}>
+              <img src={localPreview} alt="WASM 转码预览" />
+            </div>
+          )}
           {clientZip && <div className="success" style={{ marginTop: 12 }}>{clientZip}</div>}
         </section>
       )}

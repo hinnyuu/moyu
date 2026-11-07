@@ -10,12 +10,14 @@ pub const CRATE_NAME: &str = "moyu-wasm-client";
 pub const MAX_ENTRIES: usize = 65_535;
 pub const MAX_ENTRY_BYTES: usize = 0xFFFF_FFFF;
 pub const DEFAULT_MAX_INPUT_BYTES: usize = 512 * 1024 * 1024;
+pub const MAX_TRANSCODE_PIXELS: u64 = 64 * 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PackError {
     Time(TimeError),
     Name(String),
     Limit(String),
+    Transcode(String),
 }
 
 impl fmt::Display for PackError {
@@ -24,6 +26,7 @@ impl fmt::Display for PackError {
             Self::Time(error) => write!(formatter, "时间计划失败: {error}"),
             Self::Name(message) => write!(formatter, "条目名非法: {message}"),
             Self::Limit(message) => write!(formatter, "超出客户端限制: {message}"),
+            Self::Transcode(message) => write!(formatter, "转码失败: {message}"),
         }
     }
 }
@@ -86,6 +89,56 @@ pub fn pack(
     write_zip(&entries)
 }
 
+pub fn transcode_image(
+    data: &[u8],
+    max_width: u32,
+    max_height: u32,
+    format: &str,
+    quality: u8,
+) -> Result<Vec<u8>, PackError> {
+    if max_width == 0 || max_height == 0 {
+        return Err(PackError::Transcode("尺寸必须为正".into()));
+    }
+    let image = image::load_from_memory(data)
+        .map_err(|error| PackError::Transcode(format!("解码失败: {error}")))?;
+    if u64::from(image.width()) * u64::from(image.height()) > MAX_TRANSCODE_PIXELS {
+        return Err(PackError::Limit(format!(
+            "像素数超过 {}",
+            MAX_TRANSCODE_PIXELS
+        )));
+    }
+    let resized = image.resize(max_width, max_height, image::imageops::FilterType::Lanczos3);
+    let mut output = Vec::new();
+    match format.to_ascii_lowercase().as_str() {
+        "png" => {
+            resized
+                .write_to(
+                    &mut std::io::Cursor::new(&mut output),
+                    image::ImageFormat::Png,
+                )
+                .map_err(|error| PackError::Transcode(format!("PNG 编码失败: {error}")))?;
+        }
+        "jpeg" | "jpg" => {
+            use image::ImageEncoder;
+            let rgb = resized.to_rgb8();
+            let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
+                &mut output,
+                quality.clamp(1, 100),
+            );
+            encoder
+                .write_image(
+                    rgb.as_raw(),
+                    rgb.width(),
+                    rgb.height(),
+                    image::ExtendedColorType::Rgb8,
+                )
+                .map_err(|error| PackError::Transcode(format!("JPEG 编码失败: {error}")))?;
+        }
+        other => return Err(PackError::Transcode(format!("不支持的输出格式: {other}"))),
+    }
+    Ok(output)
+}
+
 pub fn dos_words(dos: DosTime) -> (u16, u16) {
     dos.to_words()
 }
@@ -137,9 +190,21 @@ mod bindings {
     }
 
     #[wasm_bindgen]
+    pub fn transcode(
+        data: &[u8],
+        max_width: u32,
+        max_height: u32,
+        format: &str,
+        quality: u8,
+    ) -> Result<Vec<u8>, JsValue> {
+        transcode_image(data, max_width, max_height, format, quality)
+            .map_err(|error| JsValue::from_str(&error.to_string()))
+    }
+
+    #[wasm_bindgen]
     pub fn capabilities() -> String {
         format!(
-            "{{\"format\":\"zip-store\",\"metadata\":\"dos-only\",\"maxInputBytes\":{},\"maxEntries\":{}}}",
+            "{{\"format\":\"zip-store\",\"metadata\":\"dos-only\",\"transcode\":[\"png\",\"jpeg\"],\"maxInputBytes\":{},\"maxEntries\":{}}}",
             DEFAULT_MAX_INPUT_BYTES, MAX_ENTRIES
         )
     }
@@ -262,6 +327,41 @@ mod tests {
         let doy = (153 * month_prime + 2) / 5 + day - 1;
         let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
         era * 146_097 + doe - 719_468
+    }
+
+    fn sample_png(width: u32, height: u32) -> Vec<u8> {
+        use image::{DynamicImage, ImageFormat, Rgba, RgbaImage};
+        let image = RgbaImage::from_pixel(width, height, Rgba([30, 80, 150, 255]));
+        let mut output = Vec::new();
+        DynamicImage::ImageRgba8(image)
+            .write_to(&mut std::io::Cursor::new(&mut output), ImageFormat::Png)
+            .expect("png");
+        output
+    }
+
+    #[test]
+    fn transcodes_png_to_jpeg_and_png() {
+        let source = sample_png(80, 40);
+        let jpeg = transcode_image(&source, 20, 20, "jpeg", 80).expect("jpeg");
+        assert_eq!(&jpeg[..2], &[0xFF, 0xD8]);
+        let decoded = image::load_from_memory(&jpeg).expect("decode jpeg");
+        assert!(decoded.width() <= 20 && decoded.height() <= 20);
+
+        let png = transcode_image(&source, 16, 16, "png", 80).expect("png");
+        assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");
+    }
+
+    #[test]
+    fn transcode_rejects_bad_input_and_format() {
+        assert!(matches!(
+            transcode_image(b"not an image", 10, 10, "jpeg", 80),
+            Err(PackError::Transcode(_))
+        ));
+        let source = sample_png(4, 4);
+        assert!(matches!(
+            transcode_image(&source, 10, 10, "webp", 80),
+            Err(PackError::Transcode(_))
+        ));
     }
 
     #[test]
