@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
@@ -104,6 +105,41 @@ test("login flow", async ({ page }) => {
   await page.getByRole("button", { name: "登录" }).click();
   await expect(page.getByRole("button", { name: "任务" })).toBeVisible();
 });
+
+test("login and jobs meet WCAG AA", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/");
+  const login = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa"])
+    .disableRules(["region"])
+    .analyze();
+  expect(summarize(login.violations)).toEqual([]);
+
+  await page.locator("#password").fill("secret-pass");
+  await page.getByRole("button", { name: "登录" }).click();
+  await expect(page.getByRole("button", { name: "任务", exact: true })).toBeVisible();
+  const jobs = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa"])
+    .disableRules(["region"])
+    .analyze();
+  expect(summarize(jobs.violations)).toEqual([]);
+
+  await page.getByRole("button", { name: /主题：/ }).click();
+  await page.getByRole("button", { name: /主题：/ }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  const dark = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa"])
+    .disableRules(["region"])
+    .analyze();
+  expect(summarize(dark.violations)).toEqual([]);
+});
+
+function summarize(violations: Array<{ id: string; nodes: Array<{ target: string[] }> }>) {
+  return violations.map((violation) => ({
+    id: violation.id,
+    targets: violation.nodes.map((node) => node.target.join(" ")),
+  }));
+}
 
 test("theme persists without flash", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("moyu-theme", "dark"));

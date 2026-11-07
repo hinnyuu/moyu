@@ -14,3 +14,4 @@
 - [2026-11-06 真实后端 E2E](2026-11-06-fullstack-e2e.md)
 - [2026-11-06 修复 fullstack E2E](2026-11-06-fix-fullstack-e2e.md)
 - [2026-11-06 修复 fullstack 测试数据与选择器](2026-11-06-fix-fullstack-data.md)
+- [2026-11-06 WCAG AA 检查](2026-11-06-wcag-axe.md)
