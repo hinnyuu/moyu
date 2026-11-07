@@ -1,6 +1,6 @@
 # wasm-client 模块文档
 
-状态：v0.0.1 架构草稿，尚未实现。
+状态：v0.0.1 阶段 2 最小实现（Rust core + WASM 绑定）。
 
 ## 职责
 
@@ -32,9 +32,36 @@ Chromium feature detection、客户端 ZIP conformance、预览回退、内存/�
 
 可禁用/替换；Rust crate 与 gateway 不互相依赖。
 
-## Rust 骨架
+## 实现
 
-- workspace member：`modules/wasm-client/rust`，package `moyu-wasm-client`，crate-type `cdylib + rlib`。
-- 当前只有无逻辑占位，不包含 ZIP/转码。
-- 沙箱没有 cargo/rustc；实现阶段用 `wasm-pack` 构建并验证 target 依赖隔离。
-- v0.0.1 客户端 ZIP 只承诺 DOS mtime，不承诺内部元数据改写。
+workspace member：`modules/wasm-client/rust`，package `moyu-wasm-client`，`cdylib + rlib`。
+
+Rust 核心：
+
+- `ClientFile { name, mtime_ns, data }`
+- `pack(files, target_epoch, utc_offset_seconds) -> Result<Vec<u8>, PackError>`
+- `write_zip(entries)`：STORE、UTF-8 名称、DOS mtime、无 extra field、标准 CRC32。
+- 复用 `moyu-core` 的 `plan_times`：所有文件同一 delta，最新文件对齐目标时间，DOS 秒向下取整。
+
+WASM 绑定（`cfg(target_arch = "wasm32")`）：
+
+- `PackBuilder`：`new()`、`add_file(name, mtime_ns, data)`、`finish(target_epoch, utc_offset_seconds)`；
+- `capabilities()`：返回 JSON 字符串（STORE、DOS-only、上限）；
+- 需要 `wasm-bindgen` 生成 JS glue；当前未提供打包好的 `.wasm`/`.js` 产物。
+
+限制：
+
+- 只支持 STORE，不压缩；
+- 总输入默认 512MiB，条目数 65535，单条 4GiB；
+- 只改 DOS mtime，不承诺内部媒体元数据；
+- 转码未实现，调用方回退服务端。
+
+## 测试
+
+```bash
+cargo test -p moyu-wasm-client
+cargo clippy -p moyu-wasm-client --all-targets -- -D warnings
+cargo check -p moyu-wasm-client --target wasm32-unknown-unknown
+```
+
+6 个单元测试覆盖 ZIP 结构、无 extra、同一 delta、偶数秒、非法名称、目标时间与空输入；CRC32 已知向量。
