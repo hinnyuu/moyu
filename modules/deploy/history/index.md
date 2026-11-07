@@ -12,4 +12,4 @@
 - [2026-11-06 修复 tusd 构建路径](2026-11-06-fix-tusd-build.md)
 - [2026-11-06 镜像增加 WASM 构建阶段](2026-11-06-wasm-stage.md)
 - [2026-11-06 发布与供应链](2026-11-06-release-supply-chain.md)
-- [2026-11-06 arm64 smoke](2026-11-06-podman-arm64.md)
+- [2026-11-06 WASM 构建改用 cargo wasm-bindgen](2026-11-06-fix-wasm-glibc.md)

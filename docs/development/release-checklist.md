@@ -37,7 +37,7 @@
 ## 5. 已知未完成项（发布时必须在 Release notes 说明）
 
 - WASM 转码未实现；客户端只生成 STORE ZIP。
-- 发布镜像只构建 amd64；arm64 由 `podman-arm64` workflow 验证但不进入 GHCR。
+- 仅 amd64 镜像；aarch64 未在 CI 构建/验证。
 - Playwright 已覆盖前端 mock E2E；真实后端联动、明暗主题截图基线与对比度自动检查未接入。
 - `cargo deny` / `cargo audit` 未接入。
 - >4GiB ZIP64、>65535 条目、服务重启续传等大文件/故障注入测试未接入。

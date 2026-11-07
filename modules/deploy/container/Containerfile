@@ -4,6 +4,7 @@ ARG NODE_VERSION=22
 ARG RUST_VERSION=1.99
 ARG PYTHON_VERSION=3.12
 ARG TUSD_VERSION=2.8.0
+ARG WASM_BINDGEN_VERSION=0.2.130
 ARG TARGETARCH=amd64
 
 FROM node:${NODE_VERSION}-alpine AS web
@@ -22,17 +23,20 @@ COPY modules/wasm-client/rust modules/wasm-client/rust
 RUN cargo build --release -p moyu-gateway
 
 FROM rust:${RUST_VERSION}-slim-bookworm AS wasm
+ARG WASM_BINDGEN_VERSION
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 RUN rustup target add wasm32-unknown-unknown \
-  && curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+  && cargo install wasm-bindgen-cli --version "${WASM_BINDGEN_VERSION}" --locked
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY modules/core-time/rust modules/core-time/rust
 COPY modules/gateway/rust modules/gateway/rust
 COPY modules/wasm-client/rust modules/wasm-client/rust
-RUN wasm-pack build modules/wasm-client/rust --target web --out-dir /wasm-out
+RUN cargo build -p moyu-wasm-client --target wasm32-unknown-unknown --release \
+  && wasm-bindgen --target web --out-dir /wasm-out \
+       target/wasm32-unknown-unknown/release/moyu_wasm_client.wasm
 
 FROM debian:bookworm-slim AS tusd
 ARG TUSD_VERSION

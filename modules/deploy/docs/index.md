@@ -113,7 +113,7 @@ python3 modules/deploy/scripts/process_e2e.py
 4. Trivy 生成表格与 SARIF 报告；
 5. SBOM 与扫描报告附加到 GitHub Release。
 
-`release` workflow 当前只构建 amd64；`podman-arm64` workflow 在 arm64 runner 上单独验证 arm64 镜像与五容器 smoke。未实现镜像签名。
+当前仅构建 amd64；aarch64 需在对应 runner/构建机执行。未实现镜像签名。
 
 ## 失败模式
 

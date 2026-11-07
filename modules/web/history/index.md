@@ -10,3 +10,4 @@
 - [2026-11-06 HLS 播放器](2026-11-06-hls-player.md)
 - [2026-11-06 Playwright 前端 E2E](2026-11-06-playwright.md)
 - [2026-11-06 修复 Playwright/Vitest 文件冲突](2026-11-06-fix-playwright-vitest.md)
+- [2026-11-06 WASM 本地构建脚本](2026-11-06-wasm-build-script.md)

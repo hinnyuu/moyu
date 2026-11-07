@@ -9,3 +9,4 @@
 - [2026-11-06 文档状态校对](2026-11-06-doc-status.md)
 - [2026-11-06 浏览器产物构建](2026-11-06-browser-package.md)
 - [2026-11-06 WASM 文档校对](2026-11-06-docs-audit.md)
+- [2026-11-06 改用 wasm-bindgen CLI](2026-11-06-wasm-bindgen-cli.md)
