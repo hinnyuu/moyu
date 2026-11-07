@@ -52,7 +52,7 @@ Pod: moyu
 
 - 只有 `gateway` 监听公网端口。
 - 证书目录挂载到 gateway。
-- 证书热重载触发方式可配置：默认轮询 + API；SIGHUP 可选；watch 未实现，使用轮询/管理 API。
+- 证书热重载触发方式可配置：默认轮询 + API；SIGHUP 可选；watch 可选，已实现文件监听。
 - gateway 管理 API 监听 Pod 内的回环地址（默认 `127.0.0.1:<admin-port>`）。
 - api/worker/preview/tusd 不直接暴露公网。
 

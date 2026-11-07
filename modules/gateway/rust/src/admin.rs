@@ -52,6 +52,8 @@ async fn handle(
                 "status": "ok",
                 "cert_loaded_at": state.store.loaded_at(),
                 "cert_sha256": state.store.cert_sha256(),
+                "cert_serial": state.store.cert_serial(),
+                "cert_not_after": state.store.cert_not_after(),
                 "reloads": state.reloads.load(Ordering::Relaxed),
             }),
         )),
@@ -64,6 +66,8 @@ async fn handle(
                         "status": "reloaded",
                         "cert_loaded_at": state.store.loaded_at(),
                         "cert_sha256": state.store.cert_sha256(),
+                        "cert_serial": state.store.cert_serial(),
+                        "cert_not_after": state.store.cert_not_after(),
                     }),
                 ))
             }

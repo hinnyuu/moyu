@@ -14,6 +14,8 @@ pub struct CertStore {
     current: ArcSwap<CertifiedKey>,
     loaded_at: ArcSwap<String>,
     sha256: ArcSwap<String>,
+    serial: ArcSwap<String>,
+    not_after: ArcSwap<String>,
     cert_path: PathBuf,
     key_path: PathBuf,
 }
@@ -22,11 +24,14 @@ impl CertStore {
     pub fn load(cert_path: &Path, key_path: &Path) -> Result<Arc<Self>, String> {
         let certified = read_certified_key(cert_path, key_path)?;
         let sha256 = file_sha256(cert_path)?;
+        let (serial, not_after) = certificate_metadata(cert_path)?;
         let loaded_at = ArcSwap::from_pointee(now_epoch().to_string());
         Ok(Arc::new(Self {
             current: ArcSwap::from(certified),
             loaded_at,
             sha256: ArcSwap::from_pointee(sha256),
+            serial: ArcSwap::from_pointee(serial),
+            not_after: ArcSwap::from_pointee(not_after),
             cert_path: cert_path.to_path_buf(),
             key_path: key_path.to_path_buf(),
         }))
@@ -35,8 +40,11 @@ impl CertStore {
     pub fn reload(&self) -> Result<(), String> {
         let certified = read_certified_key(&self.cert_path, &self.key_path)?;
         let sha256 = file_sha256(&self.cert_path)?;
+        let (serial, not_after) = certificate_metadata(&self.cert_path)?;
         self.current.store(certified);
         self.sha256.store(Arc::new(sha256));
+        self.serial.store(Arc::new(serial));
+        self.not_after.store(Arc::new(not_after));
         self.loaded_at.store(Arc::new(now_epoch().to_string()));
         Ok(())
     }
@@ -51,6 +59,14 @@ impl CertStore {
 
     pub fn cert_sha256(&self) -> String {
         self.sha256.load().as_ref().clone()
+    }
+
+    pub fn cert_serial(&self) -> String {
+        self.serial.load().as_ref().clone()
+    }
+
+    pub fn cert_not_after(&self) -> String {
+        self.not_after.load().as_ref().clone()
     }
 }
 
@@ -105,6 +121,24 @@ fn read_certified_key(cert_path: &Path, key_path: &Path) -> Result<Arc<Certified
     Ok(Arc::new(CertifiedKey::new(certs, signing_key)))
 }
 
+fn certificate_metadata(path: &Path) -> Result<(String, String), String> {
+    let file =
+        File::open(path).map_err(|error| format!("打开证书 {} 失败: {error}", path.display()))?;
+    let certs: Vec<CertificateDer<'static>> = rustls_pemfile::certs(&mut BufReader::new(file))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| format!("解析证书失败: {error}"))?;
+    let leaf = certs.first().ok_or("证书文件没有证书")?;
+    let (_, parsed) = x509_parser::parse_x509_certificate(leaf.as_ref())
+        .map_err(|error| format!("X.509 解析失败: {error}"))?;
+    let serial = parsed.serial.to_string();
+    let not_after = parsed
+        .validity()
+        .not_after
+        .to_rfc2822()
+        .unwrap_or_else(|_| parsed.validity().not_after.to_string());
+    Ok((serial, not_after))
+}
+
 fn file_sha256(path: &Path) -> Result<String, String> {
     let bytes = std::fs::read(path)
         .map_err(|error| format!("读取证书 {} 失败: {error}", path.display()))?;
@@ -141,6 +175,8 @@ mod tests {
         assert!(!store.loaded_at().is_empty());
         let before = store.cert_sha256();
         assert_eq!(before.len(), 64);
+        assert!(!store.cert_serial().is_empty());
+        assert!(!store.cert_not_after().is_empty());
 
         let mut pem = std::fs::read_to_string(&cert).expect("read cert");
         pem.push('\n');

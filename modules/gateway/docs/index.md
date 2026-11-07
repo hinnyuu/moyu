@@ -27,11 +27,11 @@ Rust 包位于 `rust/src/`：
 
 管理 API：
 
-- `GET /admin/cert/status`（兼容 `/status`）：`{status,cert_loaded_at,cert_sha256,reloads}`；
-- `POST /admin/cert/reload`（兼容 `/reload`）：重读证书，返回新的 `cert_loaded_at` 与 `cert_sha256`；
+- `GET /admin/cert/status`（兼容 `/status`）：`{status,cert_loaded_at,cert_sha256,cert_serial,cert_not_after,reloads}`；
+- `POST /admin/cert/reload`（兼容 `/reload`）：重读证书，返回新的 `cert_loaded_at`、`cert_sha256`、`cert_serial`、`cert_not_after`；
 - `GET /healthz`：健康检查；
 - 所有请求要求 `Authorization: Bearer <token>`；token 来自 `reload.api.tokenFile`，每次请求读取，支持轮换；
-- `cert_sha256` 是证书文件的 SHA-256，不是 X.509 指纹；serial/not_after 尚未解析。
+- `cert_sha256` 是证书文件的 SHA-256；`cert_serial`/`cert_not_after` 来自 X.509 叶子证书解析。
 
 ## 启动
 
@@ -55,7 +55,7 @@ MOYU_GATEWAY_CONFIG=/config/modules/gateway.yaml moyu-gateway
 - `reload.pollInterval` 支持 `ms/s/m/h`，`0s` 关闭轮询。
 - `reload.api` 提供立即重载。
 - `reload.signal` 为 true 时监听 SIGHUP。
-- `reload.watch` 当前未实现文件系统监听；为 true 时记录日志并依赖轮询/管理 API。
+- `reload.watch` 为 true 时监听证书/私钥所在目录，文件变化后重载。
 
 ## 配置
 
@@ -104,7 +104,6 @@ cargo clippy -p moyu-gateway --all-targets -- -D warnings
 
 ## 已知限制
 
-- `watch` 文件监听未实现；
 - 未做 HTTP/3、请求大小限制、速率限制；
 - 管理 API token 比较是普通字符串比较；
 - 上游只支持 HTTP/1.1。

@@ -10,6 +10,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::net::TcpListener;
 
 fn main() {
@@ -29,9 +30,6 @@ async fn run() -> Result<(), String> {
             "不支持的 gateway schemaVersion: {}",
             config.schema_version
         ));
-    }
-    if config.reload.watch {
-        eprintln!("moyu-gateway: watch 模式尚未实现，使用轮询与管理 API");
     }
     if !config.enabled {
         println!("moyu-gateway: disabled");
@@ -76,6 +74,63 @@ async fn run() -> Result<(), String> {
         tokio::spawn(async move {
             if let Err(error) = admin::serve(listener, state).await {
                 eprintln!("moyu-gateway: admin server stopped: {error}");
+            }
+        });
+    }
+
+    if config.reload.watch {
+        let cert = std::path::PathBuf::from(&config.cert.cert_file);
+        let key = std::path::PathBuf::from(&config.cert.key_file);
+        let store = store.clone();
+        let reloads = reloads.clone();
+        std::thread::spawn(move || {
+            use notify::{RecursiveMode, Watcher};
+            let names = [
+                cert.file_name().map(|name| name.to_os_string()),
+                key.file_name().map(|name| name.to_os_string()),
+            ];
+            let (sender, receiver) = std::sync::mpsc::channel();
+            let mut watcher = match notify::recommended_watcher(move |result| {
+                let _ = sender.send(result);
+            }) {
+                Ok(watcher) => watcher,
+                Err(error) => {
+                    eprintln!("moyu-gateway: watch 初始化失败: {error}");
+                    return;
+                }
+            };
+            for path in [&cert, &key] {
+                if let Some(parent) = path.parent() {
+                    if let Err(error) = watcher.watch(parent, RecursiveMode::NonRecursive) {
+                        eprintln!("moyu-gateway: watch {} 失败: {error}", parent.display());
+                    }
+                }
+            }
+            let _watcher = watcher;
+            for result in receiver {
+                match result {
+                    Ok(event) => {
+                        let relevant = event.paths.iter().any(|path| {
+                            names
+                                .iter()
+                                .flatten()
+                                .any(|name| path.file_name() == Some(name.as_os_str()))
+                        });
+                        if relevant {
+                            std::thread::sleep(Duration::from_millis(200));
+                            match store.reload() {
+                                Ok(()) => {
+                                    reloads.fetch_add(1, Ordering::Relaxed);
+                                    eprintln!("moyu-gateway: certificate reloaded (watch)");
+                                }
+                                Err(error) => {
+                                    eprintln!("moyu-gateway: watch reload failed: {error}")
+                                }
+                            }
+                        }
+                    }
+                    Err(error) => eprintln!("moyu-gateway: watch error: {error}"),
+                }
             }
         });
     }

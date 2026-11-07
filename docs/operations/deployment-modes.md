@@ -38,7 +38,7 @@ Pod: moyu
   /certs/tls.crt
   /certs/tls.key
   ```
-- 默认轮询 30s + API 重载；SIGHUP 可选；watch 未实现，使用轮询/管理 API。
+- 默认轮询 30s + API 重载；SIGHUP 可选；watch 可选，已实现文件监听。
 - gateway 管理 API 监听 Pod 内回环地址。
 - api/worker/preview/tusd 不直接暴露公网。
 

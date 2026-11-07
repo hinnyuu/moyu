@@ -33,18 +33,20 @@ Authorization: Bearer <token>
 {
   "status": "reloaded",
   "cert_loaded_at": "…",
-  "cert_sha256": "…"
+  "cert_sha256": "…",
+  "cert_serial": "…",
+  "cert_not_after": "…"
 }
 ```
 
-`cert_sha256` 是证书文件内容的 SHA-256，不是 X.509 指纹；serial/not_after 尚未解析。
+`cert_sha256` 是证书文件内容的 SHA-256；`cert_serial`/`cert_not_after` 来自 X.509 叶子证书解析。
 
 - 失败返回 4xx/5xx 和稳定错误码；
 - 不返回私钥内容。
 
 ### `GET /admin/cert/status`
 
-- 返回 `status`、`cert_loaded_at`、`cert_sha256`、`reloads`；
+- 返回 `status`、`cert_loaded_at`、`cert_sha256`、`cert_serial`、`cert_not_after`、`reloads`；
 - 不返回私钥；
 - 可用于 WebUI 和监控。
 
@@ -139,5 +141,5 @@ GET    /api/v1/admin/gateway/cert/status
 
 待补：
 
-- 坏证书/私钥不匹配时旧证书继续服务（代码保留旧证书，但缺自动化测试）；
+- 坏证书/私钥不匹配时旧证书继续服务的自动化测试；
 - 大上传和 SSE 经网关不缓冲的自动化测试。

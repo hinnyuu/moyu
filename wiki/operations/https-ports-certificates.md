@@ -102,7 +102,7 @@ token：
 - 校验证书链、私钥匹配、有效期。
 - 成功原子切换；新握手使用新证书，旧连接不断。
 - 失败保留旧证书并返回错误。
-- 返回 `cert_loaded_at`、`cert_sha256`、`reloads`；未解析 serial/not_after。
+- 返回 `cert_loaded_at`、`cert_sha256`、`cert_serial`、`cert_not_after`、`reloads`。
 
 ## 7. 双栈
 
