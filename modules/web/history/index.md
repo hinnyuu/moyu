@@ -17,3 +17,4 @@
 - [2026-11-06 WCAG AA 检查](2026-11-06-wcag-axe.md)
 - [2026-11-06 WASM 本地预览转码](2026-11-06-wasm-transcode.md)
 - [2026-11-06 ffmpeg.wasm 视频转码](2026-11-06-ffmpeg-wasm.md)
+- [2026-11-06 文档四轮校对](2026-11-06-docs-audit-round4.md)

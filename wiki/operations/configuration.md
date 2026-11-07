@@ -68,6 +68,6 @@ WebUI **不直接控制 Podman socket**。镜像 tag、卷、网络、host 端�
 
 ## 7. 变更审计
 
-- 运行时配置修改记录在数据库审计表，不进项目 `history/`。
+- 运行时配置修改记录在 `state/audit.db`，不进项目 `history/`。
 - 项目 `history/` 只记录代码/契约/schema 变化。
-- 支持下载配置、恢复 last-known-good、查看变更 diff。
+- 当前 API 提供 `GET /api/v1/config/audit`；下载配置、恢复 last-known-good、diff 视图尚未接入 WebUI。

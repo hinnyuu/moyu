@@ -56,6 +56,7 @@
 - [2026-11-06 WASM 图片转码](commits/2026-11-06-wasm-transcode.md)
 - [2026-11-06 ffmpeg.wasm 视频转码](commits/2026-11-06-ffmpeg-wasm-video.md)
 - [2026-11-06 修复多容器同时初始化的 SQLite 锁](commits/2026-11-06-fix-sqlite-lock.md)
+- [2026-11-06 发布前文档四轮校对](commits/2026-11-06-docs-audit-round4.md)
 
 ## 决策记录（ADR）
 

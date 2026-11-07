@@ -75,11 +75,11 @@ ghcr.io/hinnyuu/moyu:<version>
 - `config`：配置加载、校验、原子写入、last-known-good。
 - `storage`：上传暂存、资产、任务、输出、预览缓存。
 - `uploads`：tus 会话、完成钩子。
-- `preview`：缩略图、图片/视频/EXR 预览、MP4 代理；HLS 待补。
+- `preview`：缩略图、图片/视频/EXR 预览、MP4 代理、HLS。
 - `api`：HTTP 接口、认证、Web 静态。
 - `worker`：后台打包。
 - `web`：React + Vite + TypeScript 静态 SPA。
-- `wasm-client`：可选浏览器 ZIP；转码待补。
+- `wasm-client`：可选浏览器 ZIP 与图片转码；Web 视频转码走 ffmpeg.wasm。
 - `gateway`：Rust TLS/反代/证书热重载。
 - `deploy`：Podman/Quadlet、卷、端口、GHCR 发布。
 - `agent-gate`：文档/history/wiki/契约门禁。

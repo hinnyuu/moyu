@@ -243,7 +243,7 @@ pack(files, target_epoch, utc_offset_seconds) -> ZIP bytes
 PackBuilder.add_file(name, mtime_ns, data)
 PackBuilder.finish(target_epoch, utc_offset_seconds) -> ZIP bytes
 transcode(data, maxWidth, maxHeight, format, quality) -> image bytes
-  # 仅图片 PNG/JPEG；视频转码未实现
+  # Rust WASM 仅图片 PNG/JPEG；Web 视频转码走 ffmpeg.wasm
 ```
 
 - 可选能力，默认关闭；

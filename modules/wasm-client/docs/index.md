@@ -57,7 +57,7 @@ WASM 绑定（`cfg(target_arch = "wasm32")`）：
 - 只支持 STORE，不压缩；
 - 总输入默认 512MiB，条目数 65535，单条 4GiB；
 - 只改 DOS mtime，不承诺内部媒体元数据；
-- 转码只支持图片（PNG/JPEG 输出）；视频转码未实现，调用方回退服务端。
+- Rust WASM 转码只支持图片（PNG/JPEG）；Web 视频转码由 ffmpeg.wasm 适配器实现，需要 COOP/COEP，失败回退服务端。
 
 ## 测试
 

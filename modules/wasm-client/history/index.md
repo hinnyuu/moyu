@@ -11,3 +11,4 @@
 - [2026-11-06 WASM 文档校对](2026-11-06-docs-audit.md)
 - [2026-11-06 改用 wasm-bindgen CLI](2026-11-06-wasm-bindgen-cli.md)
 - [2026-11-06 图片转码](2026-11-06-transcode.md)
+- [2026-11-06 文档四轮校对](2026-11-06-docs-audit-round4.md)

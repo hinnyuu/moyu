@@ -91,9 +91,9 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 token：
 
 - WebUI 生成/轮换/撤销/复制一次；
-- 明文写入共享 secret 文件；
+- 明文写入 `/config/secrets/gateway_reload_token`（0600）；
 - gateway 每次请求读取，轮换立即生效；
-- 数据库只存 hash；
+- 当前不维护 token 数据库元数据；
 - 不记录到日志。
 
 ## 6. 重载语义
@@ -102,7 +102,7 @@ token：
 - 校验证书链、私钥匹配、有效期。
 - 成功原子切换；新握手使用新证书，旧连接不断。
 - 失败保留旧证书并返回错误。
-- 返回 serial、not_after、fingerprint。
+- 返回 `cert_loaded_at`、`cert_sha256`、`reloads`；未解析 serial/not_after。
 
 ## 7. 双栈
 

@@ -119,7 +119,7 @@ upstream:
   - 需要重建 pod；
   - 只读部署项。
 - 运行配置可编辑；部署配置只读或生成 Quadlet/pod 片段供下载。
-- Secret 生成/轮换后只展示一次，可复制；数据库只存 hash。
+- Secret 生成/轮换后只展示一次，可复制；管理员密码只存 PBKDF2 哈希（auth state 文件），不存明文。
 - 所有修改写 `state/audit.db` 的 `config_audit` 表：时间、actor、模块、动作、前后 revision、结果、详情；不写入项目 `history/`。
 - 审计通过 `GET /api/v1/config/audit` 读取。
 - 支持一键恢复 last-known-good。

@@ -92,4 +92,4 @@ python3 -m unittest discover -s modules/preview/tests -v
 
 ## 替换点
 
-ffmpeg / libvips / OpenImageIO provider 可替换 Pillow；接口与缓存键语义不变。视频 poster/MP4/HLS 在启用 ffmpeg 后补充。
+ffmpeg / libvips / OpenImageIO provider 可替换 Pillow；接口与缓存键语义不变。视频 poster/MP4/HLS 已通过 ffmpeg 实现。

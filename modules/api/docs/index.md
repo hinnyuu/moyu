@@ -78,7 +78,7 @@ contracts, pipeline, storage, uploads, preview, config
 
 `tests/test_auth.py`（7 个）：密码哈希、初始化、登录、错误 token/密码、签名篡改、过期、CSRF、文件权限。
 
-`tests/test_api.py`（14 个）：健康检查与认证、配置读写与 revision、上传/下载/预览、任务 + worker、取消与 404、网关管理代理与 token、请求体上限。`tests/test_gateway_admin.py`（4 个）：网关管理客户端、token 文件、不可达。
+`tests/test_api.py`（8 个）：健康检查与认证、配置读写与 audit、上传/下载/预览、任务 + worker、取消与 404、网关管理代理与 token、tusd hook、请求体上限。`tests/test_gateway_admin.py`（4 个）：网关管理客户端/token/不可达；`tests/test_preview_client.py`（3 个）：预览服务客户端/错误/不可达。
 
 运行：
 

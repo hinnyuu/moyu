@@ -29,11 +29,11 @@
 | `config` | 配置加载、schema 校验、默认值、原子写入、last-known-good | contracts | YAML/TOML、存储后端 |
 | `storage` | 上传暂存、资产、任务、输出、预览缓存、配额、清理 | contracts | 本地 FS → NAS/S3 |
 | `uploads` | tus 会话、完成钩子、入库 | contracts, storage | tusd → 其他协议 |
-| `preview` | 媒体探测、图片/视频/EXR 预览、MP4 代理；HLS 待补 | contracts, storage | ffmpeg/libvips/OpenImageIO |
+| `preview` | 媒体探测、图片/视频/EXR 预览、MP4 代理、HLS | contracts, storage | ffmpeg/libvips/OpenImageIO |
 | `api` | HTTP API、认证、任务/上传接口、Web 静态文件 | contracts, pipeline, storage, uploads, preview, config | FastAPI → 其他 |
 | `worker` | 后台打包任务、进度、取消、恢复 | pipeline, storage, config | 单进程 → 队列 |
 | `web` | React + Vite + TypeScript 静态 SPA，支持 system/light/dark 主题 | contracts 生成客户端 | 框架可替换 |
-| `wasm-client` | 可选浏览器 ZIP；转码待补；Rust WASM | contracts, core-time | 可禁用/替换 |
+| `wasm-client` | 可选浏览器 ZIP 与图片转码；Web 视频转码走 ffmpeg.wasm；Rust WASM | contracts, core-time | 可禁用/替换 |
 | `gateway` | Rust TLS、反向代理、证书热重载、双栈、token API | contracts, config | Rust 实现可替换 |
 | `deploy` | Podman/Quadlet、卷、端口、GHCR、发布与运维文档 | 全部模块的运维事实 | 部署实现可替换 |
 | `agent-gate` | 文档/history/wiki/契约门禁 | 仓库自身 | 工具可替换 |
