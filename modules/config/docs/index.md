@@ -20,7 +20,7 @@ contracts
 
 Python 包位于 `src/moyu_config/`：
 
-- `ConfigProvider(config_dir, schemas_dir=None)`
+- `ConfigProvider(config_dir, schemas_dir=None, read_only=False)`
   - `load() -> EffectiveConfig`
   - `validate(name, data) -> dict`
   - `write(name, patch, revision=None) -> WriteResult`
@@ -28,6 +28,8 @@ Python 包位于 `src/moyu_config/`：
 - `EffectiveConfig`：`global_config`、`modules`、`revisions`、`degraded`、`get(name)`、`to_dict()`。
 - `WriteResult`：`name`、`revision`、`data`、`backup`。
 - `ConfigError`：`code`、`message`、`details`、`to_dict()`。
+
+`read_only=True` 时不创建目录/文件、不写 LKG、`write` 抛 `read_only`；适合 worker 等只读消费者。
 
 配置名：`global`（`moyu.yaml`）、`gateway`、`api`、`worker`、`preview`、`storage`、`uploads`（`modules/<name>.yaml`）。
 

@@ -18,7 +18,7 @@ def required(name):
 
 
 def main():
-    provider = ConfigProvider(required("MOYU_CONFIG_DIR"))
+    provider = ConfigProvider(required("MOYU_CONFIG_DIR"), read_only=True)
     effective = provider.load()
     storage_config = effective.modules["storage"]
     storage = Storage(

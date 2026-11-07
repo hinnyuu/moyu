@@ -1,0 +1,31 @@
+name: podman
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+      - name: Install Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman openssl
+          podman info --format '{{.Host.Arch}}'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m pip install pyyaml jsonschema
+      - name: Build single image
+        run: podman build --layers -f modules/deploy/container/Containerfile -t moyu:smoke .
+      - name: Pod smoke
+        env:
+          MOYU_SMOKE_IMAGE: moyu:smoke
+        run: bash modules/deploy/scripts/podman_smoke.sh

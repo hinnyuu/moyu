@@ -10,7 +10,7 @@ deploy 负责把 moyu 装进一个 Podman pod：一个镜像，按角色启动 g
 podman build -f modules/deploy/container/Containerfile -t <image> .
 ```
 
-镜像构建会编译 Web、Rust gateway，并安装 Python 依赖。当前沙箱没有 Podman，未实际构建验证。
+镜像构建会编译 Web、Rust gateway，并安装 Python 依赖。本地沙箱没有 Podman；GitHub Actions 的 `podman` workflow 会在 amd64 runner 上构建并运行 pod smoke。
 
 ## 用 Quadlet 启动
 

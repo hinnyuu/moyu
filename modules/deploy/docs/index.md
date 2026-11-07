@@ -83,11 +83,20 @@ modules/deploy/
 python3 modules/deploy/scripts/process_e2e.py
 ```
 
-当前沙箱结果：PASS（任务成功，ZIP 1 个条目，manifest sha256 匹配，源资产未被修改）。
+当前沙箱结果：PASS（任务成功，ZIP 1 个条目，manifest sha256 匹配，源资产未被修改）。这条流程也已接入 `python` CI。
+
+## Podman smoke
+
+`.github/workflows/podman.yml` 在 amd64 runner 上安装 Podman，构建单镜像并运行 `modules/deploy/scripts/podman_smoke.sh`：
+
+- 启动 api/worker/gateway 三容器 pod；
+- 验证 pod 网络、TLS gateway、配置/数据/secret 挂载；
+- 通过 gateway 完成会话登录；
+- 验证 worker 容器存活。
 
 ## 当前限制
 
-- 沙箱没有 Podman，容器未实际构建/运行；镜像构建与 pod smoke 待有 Podman 的环境验证。
+- 本沙箱没有 Podman，容器不能本地运行；镜像与 pod 由 amd64 CI 验证。
 - `preview` 目前由 api 进程内调用，尚未拆成独立容器。
 - `tusd` 尚未打进镜像；当前使用 API 的 tus 兼容分片端点。独立 tusd 容器待补。
 - 镜像未包含 ffmpeg/libvips/OpenImageIO；视频/EXR 预览仍返回不支持。

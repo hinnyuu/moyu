@@ -76,8 +76,9 @@ def _sha256_bytes(data):
 
 
 class ConfigProvider:
-    def __init__(self, config_dir, schemas_dir=None):
+    def __init__(self, config_dir, schemas_dir=None, read_only=False):
         self.config_dir = Path(config_dir)
+        self.read_only = bool(read_only)
         self.state_dir = self.config_dir / STATE_DIR
         self.lkg_dir = self.state_dir / LKG_DIR
         self.backup_dir = self.state_dir / BACKUPS_DIR
@@ -86,6 +87,10 @@ class ConfigProvider:
         self._validators = {}
 
     def ensure_layout(self):
+        if self.read_only:
+            if not self.config_dir.is_dir():
+                raise ConfigError("config_missing", f"配置目录不存在: {self.config_dir}")
+            return
         try:
             for directory in (
                 self.config_dir,
@@ -213,7 +218,8 @@ class ConfigProvider:
             if not path.exists():
                 data = default_for(name)
                 self.validate(name, data)
-                self._atomic_write(path, data)
+                if not self.read_only:
+                    self._atomic_write(path, data)
             else:
                 try:
                     data = self._read_valid(path, name)
@@ -227,8 +233,14 @@ class ConfigProvider:
                         ) from exc
                     data = fallback
                     degraded.append(name)
-            revisions[name] = self._revision(path)
-            self._snapshot_lkg(name, data)
+            if path.exists():
+                revisions[name] = self._revision(path)
+            else:
+                revisions[name] = _sha256_bytes(
+                    json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
+                )
+            if not self.read_only:
+                self._snapshot_lkg(name, data)
             if name == "global":
                 global_config = data
             else:
@@ -242,6 +254,8 @@ class ConfigProvider:
         )
 
     def write(self, name, patch, revision=None):
+        if self.read_only:
+            raise ConfigError("read_only", "配置以只读方式加载，不能写入")
         if name not in CONFIG_NAMES:
             raise ConfigError("unknown_config", f"未知配置: {name}")
         if not isinstance(patch, dict):

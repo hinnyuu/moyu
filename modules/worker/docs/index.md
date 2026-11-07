@@ -20,7 +20,7 @@ pipeline, storage, config
 
 Python 包位于 `src/moyu_worker/`：
 
-容器入口：`moyu worker` / `python3 -m moyu_worker`；启动时 `recover()`，循环 `run_once()`，SIGTERM/SIGINT 停止。
+容器入口：`moyu worker` / `python3 -m moyu_worker`；配置以只读方式加载，启动时 `recover()`，循环 `run_once()`，SIGTERM/SIGINT 停止。
 
 - `Worker(storage)`
   - `run_once() -> WorkerResult | None`

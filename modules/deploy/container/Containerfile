@@ -13,7 +13,7 @@ RUN npm run build
 
 FROM rust:${RUST_VERSION}-slim-bookworm AS gateway
 WORKDIR /src
-COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY Cargo.toml Cargo.lock ./
 COPY modules/core-time/rust modules/core-time/rust
 COPY modules/gateway/rust modules/gateway/rust
 COPY modules/wasm-client/rust modules/wasm-client/rust

@@ -137,6 +137,23 @@ copy: *session
             self.provider.validate("worker", {"schemaVersion": 1, "concurrency": 0})
         self.assertEqual(ctx.exception.code, "schema_invalid")
 
+    def test_read_only_does_not_write(self):
+        self.root.mkdir(parents=True)
+        provider = ConfigProvider(self.root, read_only=True)
+        effective = provider.load()
+        self.assertEqual(effective.modules["worker"], DEFAULTS["worker"])
+        self.assertFalse((self.root / "moyu.yaml").exists())
+        self.assertFalse((self.root / "state").exists())
+        with self.assertRaises(ConfigError) as ctx:
+            provider.write("worker", {"concurrency": 2})
+        self.assertEqual(ctx.exception.code, "read_only")
+
+    def test_read_only_missing_dir_fails(self):
+        provider = ConfigProvider(self.root / "missing", read_only=True)
+        with self.assertRaises(ConfigError) as ctx:
+            provider.load()
+        self.assertEqual(ctx.exception.code, "config_missing")
+
     def test_last_known_good_missing(self):
         with self.assertRaises(ConfigError) as ctx:
             self.provider.last_known_good("api")
