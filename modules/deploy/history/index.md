@@ -19,3 +19,4 @@
 - [2026-11-06 API 重启续传 E2E](2026-11-06-restart-resume.md)
 - [2026-11-06 Web 构建包含 ffmpeg core](2026-11-06-ffmpeg-core.md)
 - [2026-11-06 token 审计库路径](2026-11-06-token-db.md)
+- [2026-11-06 修复 smoke 容器检查](2026-11-06-fix-smoke-check.md)

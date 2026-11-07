@@ -60,6 +60,7 @@
 - [2026-11-06 网关 watch 与证书元数据](commits/2026-11-06-gateway-watch-cert-metadata.md)
 - [2026-11-06 网关 token 元数据与审计](commits/2026-11-06-token-metadata-audit.md)
 - [2026-11-06 多用户、密码重置与登录限流](commits/2026-11-06-auth-users-rate-limit.md)
+- [2026-11-06 修复 Podman smoke 误报容器未运行](commits/2026-11-06-fix-podman-smoke-check.md)
 
 ## 决策记录（ADR）
 

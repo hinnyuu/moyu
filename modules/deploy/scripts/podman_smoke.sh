@@ -124,12 +124,19 @@ if [ "$status" != "204" ]; then
 fi
 
 session="$(curl -k -s -b "$TMP/cookies" "https://127.0.0.1:${PUBLIC_PORT}/api/v1/auth/session")"
-echo "$session" | grep -q '"username":"admin"'
-echo "$session" | grep -q '"csrf"'
+case "$session" in
+  *'"username":"admin"'*) ;;
+  *) echo "session missing admin username: $session" >&2; exit 1 ;;
+esac
+case "$session" in
+  *'"csrf"'*) ;;
+  *) echo "session missing csrf: $session" >&2; exit 1 ;;
+esac
 
 for name in worker preview tusd; do
-  if ! podman ps --format '{{.Names}}' | grep -q "${POD}-${name}"; then
-    echo "${name} container is not running" >&2
+  running="$(podman inspect --format '{{.State.Running}}' "${POD}-${name}" 2>/dev/null || true)"
+  if [ "$running" != "true" ]; then
+    echo "${name} container is not running (state=${running:-missing})" >&2
     exit 1
   fi
 done
