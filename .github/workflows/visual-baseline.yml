@@ -33,7 +33,7 @@ jobs:
           MOYU_UPDATE_SNAPSHOTS: "1"
           MOYU_E2E_NO_WEBSERVER: "1"
         run: |
-          npm run preview -- --port 4173 --strictPort > /tmp/preview.log 2>&1 &
+          npm run preview -- --host 127.0.0.1 --port 4173 --strictPort > /tmp/preview.log 2>&1 &
           PREVIEW_PID=$!
           trap 'kill $PREVIEW_PID 2>/dev/null || true' EXIT
           ready=0
