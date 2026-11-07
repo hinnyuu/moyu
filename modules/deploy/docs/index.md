@@ -110,20 +110,21 @@ python3 modules/deploy/scripts/restart_resume_e2e.py
 
 ## 当前限制
 
-- 本沙箱没有 Podman，容器不能本地运行；镜像与 pod 由 amd64 CI 验证。
+- 本沙箱没有 Podman，容器不能本地运行；镜像与 pod 由 amd64/arm64 CI 验证。
 
 
 ## 发布
 
 打 `v*` 标签触发 `.github/workflows/release.yml`：
 
-1. 构建单镜像；
-2. 推送 GHCR：`:<tag>`、`:sha-<12位>`、`:latest`；
-3. Syft 生成 SPDX SBOM；
-4. Trivy 生成表格与 SARIF 报告；
-5. SBOM 与扫描报告附加到 GitHub Release。
+1. amd64 与 arm64 分别构建单镜像；
+2. 推送架构 tag：`:<tag>-amd64`、`:<tag>-arm64`、`:sha-<12位>-<arch>`；
+3. 创建多架构 manifest：`:<tag>`、`:sha-<12位>`、`:latest`；
+4. Syft 生成 SPDX SBOM；
+5. Trivy 生成表格与 SARIF 报告；
+6. SBOM 与扫描报告附加到 GitHub Release。
 
-`release` workflow 只构建 amd64；`podman-arm64` workflow 验证 arm64 镜像但不推送。未实现镜像签名。
+`release` workflow 构建 amd64 + arm64 并推送多架构 manifest；未实现镜像签名。
 
 ## 失败模式
 

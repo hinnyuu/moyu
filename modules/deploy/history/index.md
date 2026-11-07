@@ -20,3 +20,4 @@
 - [2026-11-06 Web 构建包含 ffmpeg core](2026-11-06-ffmpeg-core.md)
 - [2026-11-06 token 审计库路径](2026-11-06-token-db.md)
 - [2026-11-06 修复 smoke 容器检查](2026-11-06-fix-smoke-check.md)
+- [2026-11-06 多架构发布](2026-11-06-multiarch-release.md)
