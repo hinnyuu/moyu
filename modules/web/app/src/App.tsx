@@ -5,10 +5,11 @@ import { JobsPage } from "./pages/Jobs";
 import { LoginPage } from "./pages/Login";
 import { SettingsPage } from "./pages/Settings";
 import { UploadPage } from "./pages/Upload";
+import { UsersPage } from "./pages/Users";
 import { applyTheme, loadPref, nextPref, themeLabel } from "./theme";
 import type { ThemePref } from "./theme";
 
-type View = "jobs" | "upload" | "settings";
+type View = "jobs" | "upload" | "users" | "settings";
 type Phase = "loading" | "login" | "ready";
 
 export function App() {
@@ -111,6 +112,14 @@ export function App() {
           >
             上传
           </button>
+          {session?.role === "admin" && (
+            <button
+              className={view === "users" ? "active" : ""}
+              onClick={() => setView("users")}
+            >
+              用户
+            </button>
+          )}
           <button
             className={view === "settings" ? "active" : ""}
             onClick={() => setView("settings")}
@@ -135,6 +144,7 @@ export function App() {
       <main className="container">
         {view === "jobs" && <JobsPage />}
         {view === "upload" && <UploadPage />}
+        {view === "users" && session?.role === "admin" && <UsersPage />}
         {view === "settings" && <SettingsPage />}
       </main>
     </div>

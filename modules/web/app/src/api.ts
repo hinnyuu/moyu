@@ -60,6 +60,7 @@ export interface Health {
 
 export interface Session {
   username: string;
+  role: string;
   csrf: string;
   expires_at: number;
 }
@@ -91,6 +92,12 @@ export interface Job {
   request: Record<string, unknown>;
 }
 
+export interface User {
+  username: string;
+  role: string;
+  created_at: string;
+}
+
 export interface ConfigSnapshot {
   global: Record<string, unknown>;
   modules: Record<string, Record<string, unknown>>;
@@ -118,6 +125,19 @@ export const api = {
   },
   logout: () =>
     request<void>("/api/v1/auth/session", { method: "DELETE" }),
+  users: () => request<User[]>("/api/v1/users"),
+  createUser: (username: string, password: string, role: string) =>
+    request<User>("/api/v1/users", {
+      method: "POST",
+      body: JSON.stringify({ username, password, role }),
+    }),
+  deleteUser: (username: string) =>
+    request<void>(`/api/v1/users/${username}`, { method: "DELETE" }),
+  resetUserPassword: (username: string, password: string) =>
+    request<void>(`/api/v1/users/${username}/password`, {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    }),
   config: () => request<ConfigSnapshot>("/api/v1/config"),
   saveConfig: (module: string, patch: unknown, revision: string) =>
     request<{ config: Record<string, unknown>; revision: string }>(

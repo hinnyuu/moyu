@@ -33,6 +33,7 @@ app/
 │     ├─ Login.tsx     # bootstrap token / 密码登录
 │     ├─ Jobs.tsx      # 任务列表、进度、取消
 │     ├─ Upload.tsx    # 批量队列、暂停/恢复、预览、创建任务
+│     ├─ Users.tsx     # 管理员用户管理
 │     └─ Settings.tsx  # 配置 JSON 编辑与 revision
 ├─ package.json
 └─ vite.config.ts
@@ -67,6 +68,7 @@ app/
 - 本地视频转码：`ffmpeg.wasm` 将首个队列视频缩放到 MP4；需要 COOP/COEP 跨源隔离，失败时提示回退服务端。
 - ffmpeg core 由 `scripts/copy-ffmpeg.mjs` 在 build 前复制到 `public/ffmpeg/`（约 31MB），不提交仓库。
 - HLS 预览：视频资产可点开播放器，`hls.js` 动态加载；原生支持 HLS 的浏览器走原生路径。
+- 用户：仅 admin 可见；创建/删除用户、重置密码。
 - 配置：按模块编辑 JSON，保存时带 revision；显示 LKG 降级警告。
 
 ## 配置
@@ -94,7 +96,7 @@ npm run build
 - `npm run typecheck` 通过；
 - `npm run build` 通过；
 - `npm test`（Vitest）4 个队列测试：新建上传、断点续传、暂停、错误传播；
-- `npm run test:e2e`（Playwright）4 个前端 mock E2E：登录、WCAG AA（登录/任务页亮暗两套）、主题持久化、队列刷新恢复。
+- `npm run test:e2e`（Playwright）5 个前端 mock E2E：登录、WCAG AA（登录/任务页亮暗两套）、用户页、主题持久化、队列刷新恢复。
 - `modules/deploy/scripts/fullstack_e2e.sh`：真实 api/worker + 构建后 Web 的 Playwright 流程（登录、上传、建任务、任务成功、主题、可选视频转码）。
 - 构建产物由 API 静态挂载后可访问（首页、JS、CSS 均为 200）。
 

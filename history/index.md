@@ -64,6 +64,8 @@
 - [2026-11-06 cargo-deny / cargo-audit 接入](commits/2026-11-06-cargo-deny-audit.md)
 - [2026-11-06 多架构镜像发布](commits/2026-11-06-multiarch-release.md)
 - [2026-11-06 真实视频转码 E2E](commits/2026-11-06-video-transcode-e2e.md)
+- [2026-11-06 WebUI 用户管理](commits/2026-11-06-web-users-ui.md)
+- [2026-11-06 主题截图基线脚手架](commits/2026-11-06-visual-baseline-scaffold.md)
 
 ## 决策记录（ADR）
 

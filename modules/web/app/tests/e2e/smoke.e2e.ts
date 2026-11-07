@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
@@ -34,9 +35,19 @@ async function mockApi(page: Page, initiallyAuthenticated = false) {
         contentType: "application/json",
         body: JSON.stringify({
           username: "admin",
+          role: "admin",
           csrf: "csrf-token",
           expires_at: Math.floor(Date.now() / 1000) + 3600,
         }),
+      });
+    }
+    if (path === "/api/v1/users" && method === "GET") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          { username: "admin", role: "admin", created_at: "2026-11-06T00:00:00Z" },
+        ]),
       });
     }
     if (path === "/api/v1/jobs") {
@@ -141,6 +152,17 @@ function summarize(violations: Array<{ id: string; nodes: Array<{ target: string
   }));
 }
 
+test("admin can open users page", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/");
+  await page.locator("#password").fill("secret-pass");
+  await page.getByRole("button", { name: "登录" }).click();
+  await expect(page.getByRole("button", { name: "任务", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "用户", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "用户" })).toBeVisible();
+  await expect(page.locator("tbody")).toContainText("admin");
+});
+
 test("theme persists without flash", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("moyu-theme", "dark"));
   await mockApi(page);
@@ -151,6 +173,25 @@ test("theme persists without flash", async ({ page }) => {
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   expect(errors).toEqual([]);
+});
+
+test("theme screenshots", async ({ page }, testInfo) => {
+  const baseline = testInfo.snapshotPath("login-light.png");
+  test.skip(
+    !fs.existsSync(baseline) && !process.env.MOYU_UPDATE_SNAPSHOTS,
+    "截图基线尚未生成",
+  );
+  await mockApi(page);
+  await page.goto("/");
+  await expect(page).toHaveScreenshot("login-light.png");
+  await page.locator("#password").fill("secret-pass");
+  await page.getByRole("button", { name: "登录" }).click();
+  await expect(page.getByRole("button", { name: "任务", exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot("jobs-light.png");
+  await page.getByRole("button", { name: /主题：/ }).click();
+  await page.getByRole("button", { name: /主题：/ }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page).toHaveScreenshot("jobs-dark.png");
 });
 
 test("upload queue survives reload", async ({ page }) => {
