@@ -244,6 +244,10 @@ def create_app(storage, config_provider, auth, gateway_admin=None):
     async def read_config(session=Depends(current_session)):
         return config_provider.load().to_dict()
 
+    @app.get("/api/v1/config/audit")
+    async def config_audit(limit: int = 100, session=Depends(current_session)):
+        return config_provider.audit(limit)
+
     @app.get("/api/v1/config/{module}")
     async def read_module(module: str, session=Depends(current_session)):
         current = config_provider.load()

@@ -14,6 +14,7 @@ from moyu_config import (  # noqa: E402
     ConfigProvider,
     default_for,
 )
+from moyu_config.migrations import Migration  # noqa: E402
 
 
 class ConfigTests(unittest.TestCase):
@@ -153,6 +154,80 @@ copy: *session
         with self.assertRaises(ConfigError) as ctx:
             provider.load()
         self.assertEqual(ctx.exception.code, "config_missing")
+
+    def test_migration_backup_and_audit(self):
+        modules = self.root / "modules"
+        modules.mkdir(parents=True)
+        (modules / "worker.yaml").write_text(
+            "schemaVersion: 1\nconcurrency: 1\n"
+            "jobTimeoutSeconds: 3600\npollIntervalSeconds: 2\n",
+            encoding="utf-8",
+        )
+        migration = Migration(
+            module="worker",
+            from_version=1,
+            to_version=2,
+            apply=lambda data: {**data, "jobTimeoutSeconds": 7200},
+            description="raise worker timeout",
+        )
+        provider = ConfigProvider(
+            self.root,
+            migrations={("worker", 1): migration},
+            current_version=2,
+        )
+        effective = provider.load()
+        self.assertEqual(effective.modules["worker"]["schemaVersion"], 2)
+        self.assertEqual(effective.modules["worker"]["jobTimeoutSeconds"], 7200)
+        backups = list((self.root / "state" / "backups").glob("*pre-migrate-v1.yaml"))
+        self.assertEqual(len(backups), 1)
+        audit = provider.audit()
+        self.assertEqual(audit[0]["action"], "migrate")
+        self.assertEqual(audit[0]["details"]["from"], 1)
+        self.assertEqual(audit[0]["details"]["to"], 2)
+
+    def test_migration_missing_and_read_only(self):
+        modules = self.root / "modules"
+        modules.mkdir(parents=True)
+        (modules / "worker.yaml").write_text(
+            "schemaVersion: 1\nconcurrency: 1\n"
+            "jobTimeoutSeconds: 3600\npollIntervalSeconds: 2\n",
+            encoding="utf-8",
+        )
+        provider = ConfigProvider(self.root, current_version=2)
+        with self.assertRaises(ConfigError) as ctx:
+            provider.load()
+        self.assertEqual(ctx.exception.code, "migration_missing")
+
+        ro = ConfigProvider(self.root, read_only=True, current_version=2)
+        with self.assertRaises(ConfigError) as ctx:
+            ro.load()
+        self.assertEqual(ctx.exception.code, "migration_required")
+
+    def test_schema_newer_rejected(self):
+        modules = self.root / "modules"
+        modules.mkdir(parents=True)
+        (modules / "worker.yaml").write_text(
+            "schemaVersion: 3\nconcurrency: 1\n"
+            "jobTimeoutSeconds: 3600\npollIntervalSeconds: 2\n",
+            encoding="utf-8",
+        )
+        with self.assertRaises(ConfigError) as ctx:
+            ConfigProvider(self.root).load()
+        self.assertEqual(ctx.exception.code, "schema_newer")
+
+    def test_audit_records_write(self):
+        effective = self.provider.load()
+        self.provider.write(
+            "worker",
+            {"concurrency": 3},
+            revision=effective.revisions["worker"],
+            actor="tester",
+        )
+        audit = self.provider.audit()
+        self.assertEqual(audit[0]["action"], "write")
+        self.assertEqual(audit[0]["actor"], "tester")
+        self.assertEqual(audit[0]["module"], "worker")
+        self.assertEqual(audit[0]["result"], "ok")
 
     def test_last_known_good_missing(self):
         with self.assertRaises(ConfigError) as ctx:

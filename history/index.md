@@ -31,6 +31,7 @@
 - [2026-11-06 wasm-client 阶段 2 最小实现](commits/2026-11-06-wasm-client-implementation.md)
 - [2026-11-06 发布前文档状态第一轮校对](commits/2026-11-06-docs-status-audit.md)
 - [2026-11-06 网关 token 管理与契约对齐](commits/2026-11-06-gateway-token-contract-alignment.md)
+- [2026-11-06 config schema 迁移与审计](commits/2026-11-06-config-migrations-audit.md)
 
 ## 决策记录（ADR）
 

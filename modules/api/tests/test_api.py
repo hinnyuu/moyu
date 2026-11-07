@@ -160,6 +160,11 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(stale.status_code, 409)
         self.assertEqual(stale.json()["code"], "revision_conflict")
 
+        audit = self.client.get("/api/v1/config/audit").json()
+        self.assertEqual(audit[0]["module"], "worker")
+        self.assertEqual(audit[0]["action"], "write")
+        self.assertEqual(audit[0]["actor"], "api")
+
     def test_upload_download_and_preview(self):
         csrf = self.login()
         headers = self.csrf_headers(csrf)

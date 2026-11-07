@@ -100,8 +100,9 @@ upstream:
   - 没有 last-known-good 时，启动失败或进入只读恢复模式；
   - 不静默用默认值覆盖用户配置。
 - `schemaVersion` 升级：
-  - 启动时迁移；
-  - 迁移前备份到 `state/backups/`；
+  - 启动时按 `schemaVersion` 逐版本迁移；
+  - 迁移前备份到 `state/backups/`，迁移后校验并原子写回；
+  - 缺少逐版本迁移返回 `migration_missing`；只读模式遇到待迁移返回 `migration_required`；版本高于代码返回 `schema_newer`；
   - 失败则回滚并报告。
 - 写入：
   - 临时文件 + fsync + 原子 rename；
@@ -119,7 +120,8 @@ upstream:
   - 只读部署项。
 - 运行配置可编辑；部署配置只读或生成 Quadlet/pod 片段供下载。
 - Secret 生成/轮换后只展示一次，可复制；数据库只存 hash。
-- 所有修改写审计表：谁、时间、模块、字段、结果；不写入项目 `history/`。
+- 所有修改写 `state/audit.db` 的 `config_audit` 表：时间、actor、模块、动作、前后 revision、结果、详情；不写入项目 `history/`。
+- 审计通过 `GET /api/v1/config/audit` 读取。
 - 支持一键恢复 last-known-good。
 
 ## 8. 端口

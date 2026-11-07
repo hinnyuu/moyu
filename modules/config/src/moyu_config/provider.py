@@ -16,6 +16,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import sqlite3
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -25,6 +26,7 @@ import yaml
 
 from .defaults import SCHEMA_FILES, default_for, file_for
 from .errors import ConfigError
+from .migrations import CURRENT_VERSION, MIGRATIONS, migration_for
 
 STATE_DIR = "state"
 LKG_DIR = "last-known-good"
@@ -76,12 +78,22 @@ def _sha256_bytes(data):
 
 
 class ConfigProvider:
-    def __init__(self, config_dir, schemas_dir=None, read_only=False):
+    def __init__(
+        self,
+        config_dir,
+        schemas_dir=None,
+        read_only=False,
+        migrations=None,
+        current_version=CURRENT_VERSION,
+    ):
         self.config_dir = Path(config_dir)
         self.read_only = bool(read_only)
+        self.migrations = MIGRATIONS if migrations is None else migrations
+        self.current_version = int(current_version)
         self.state_dir = self.config_dir / STATE_DIR
         self.lkg_dir = self.state_dir / LKG_DIR
         self.backup_dir = self.state_dir / BACKUPS_DIR
+        self.audit_path = self.state_dir / "audit.db"
         default_schemas = Path(__file__).resolve().parents[2] / "schemas"
         self.schemas_dir = Path(schemas_dir) if schemas_dir else default_schemas
         self._validators = {}
@@ -191,7 +203,68 @@ class ConfigProvider:
     def _read_valid(self, path, name):
         text = path.read_text(encoding="utf-8")
         data = self._parse(text, name)
+        version = int(data.get("schemaVersion", 1))
+        if version > self.current_version:
+            raise ConfigError(
+                "schema_newer",
+                f"{name}: schemaVersion {version} 高于当前支持的 {self.current_version}",
+            )
+        if version < self.current_version:
+            raise ConfigError(
+                "migration_required",
+                f"{name}: schemaVersion {version} 需要迁移到 {self.current_version}",
+            )
         return self.validate(name, data)
+
+    def _maybe_migrate(self, path, name):
+        text = path.read_text(encoding="utf-8")
+        data = self._parse(text, name)
+        version = int(data.get("schemaVersion", 1))
+        if version > self.current_version:
+            raise ConfigError(
+                "schema_newer",
+                f"{name}: schemaVersion {version} 高于当前支持的 {self.current_version}",
+            )
+        if version == self.current_version:
+            return
+        if self.read_only:
+            raise ConfigError(
+                "migration_required",
+                f"{name}: schemaVersion {version} 需要在可写模式迁移到 {self.current_version}",
+            )
+        original = version
+        before = self._revision(path)
+        backup = self._backup(name, path, before, f"pre-migrate-v{version}")
+        steps = []
+        while version < self.current_version:
+            migration = migration_for(self.migrations, name, version)
+            if migration is None:
+                raise ConfigError(
+                    "migration_missing",
+                    f"{name}: 缺少 {version} -> {version + 1} 的迁移",
+                )
+            data = migration.apply(copy.deepcopy(data)) or {}
+            version = migration.to_version
+            data["schemaVersion"] = version
+            steps.append(
+                migration.description or f"{migration.from_version}->{migration.to_version}"
+            )
+        self.validate(name, data)
+        self._atomic_write(path, data)
+        self._record_audit(
+            "system",
+            name,
+            "migrate",
+            before,
+            self._revision(path),
+            "ok",
+            {
+                "from": original,
+                "to": version,
+                "backup": str(backup),
+                "migrations": steps,
+            },
+        )
 
     def _read_lkg(self, name):
         path = self._lkg_path(name)
@@ -217,13 +290,21 @@ class ConfigProvider:
             path = self._path_for(name)
             if not path.exists():
                 data = default_for(name)
+                data["schemaVersion"] = self.current_version
                 self.validate(name, data)
                 if not self.read_only:
                     self._atomic_write(path, data)
             else:
                 try:
+                    self._maybe_migrate(path, name)
                     data = self._read_valid(path, name)
                 except ConfigError as exc:
+                    if exc.code in (
+                        "schema_newer",
+                        "migration_missing",
+                        "migration_required",
+                    ):
+                        raise
                     fallback = self._read_lkg(name)
                     if fallback is None:
                         raise ConfigError(
@@ -253,7 +334,7 @@ class ConfigProvider:
             degraded=tuple(degraded),
         )
 
-    def write(self, name, patch, revision=None):
+    def write(self, name, patch, revision=None, actor="api"):
         if self.read_only:
             raise ConfigError("read_only", "配置以只读方式加载，不能写入")
         if name not in CONFIG_NAMES:
@@ -264,6 +345,7 @@ class ConfigProvider:
         path = self._path_for(name)
         if not path.exists():
             current = default_for(name)
+            current["schemaVersion"] = self.current_version
             self.validate(name, current)
             self._atomic_write(path, current)
         current_revision = self._revision(path)
@@ -279,24 +361,108 @@ class ConfigProvider:
         backup = self._backup(name, path, current_revision)
         self._atomic_write(path, merged)
         self._snapshot_lkg(name, merged)
+        new_revision = self._revision(path)
+        self._record_audit(
+            actor,
+            name,
+            "write",
+            current_revision,
+            new_revision,
+            "ok",
+            {"backup": str(backup)},
+        )
         return WriteResult(
             name=name,
-            revision=self._revision(path),
+            revision=new_revision,
             data=merged,
             backup=str(backup),
         )
 
-    def _backup_path(self, name, revision):
+    def _backup_path(self, name, revision, suffix=""):
         stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-        return self.backup_dir / f"{name}-{stamp}-{revision[:12]}.yaml"
+        tail = f"-{suffix}" if suffix else ""
+        return self.backup_dir / f"{name}-{stamp}-{revision[:12]}{tail}.yaml"
 
-    def _backup(self, name, path, revision):
-        target = self._backup_path(name, revision)
+    def _backup(self, name, path, revision, suffix=""):
+        target = self._backup_path(name, revision, suffix)
         try:
             target.write_bytes(path.read_bytes())
         except OSError as exc:
             raise ConfigError("backup_failed", f"备份 {name} 失败: {exc}") from exc
         return target
+
+    def _audit_connection(self):
+        self.state_dir.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(self.audit_path, timeout=10)
+        connection.row_factory = sqlite3.Row
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS config_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                module TEXT NOT NULL,
+                action TEXT NOT NULL,
+                revision_before TEXT NOT NULL,
+                revision_after TEXT NOT NULL,
+                result TEXT NOT NULL,
+                details TEXT NOT NULL
+            )
+            """
+        )
+        return connection
+
+    def _record_audit(
+        self, actor, module, action, revision_before, revision_after, result, details
+    ):
+        if self.read_only:
+            return
+        try:
+            connection = self._audit_connection()
+            with connection:
+                connection.execute(
+                    "INSERT INTO config_audit"
+                    " (created_at, actor, module, action, revision_before, revision_after, result, details)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        dt.datetime.now(dt.timezone.utc).isoformat(),
+                        str(actor),
+                        module,
+                        action,
+                        revision_before or "",
+                        revision_after or "",
+                        result,
+                        json.dumps(details or {}, ensure_ascii=False),
+                    ),
+                )
+            connection.close()
+        except sqlite3.Error as exc:
+            raise ConfigError("audit_failed", f"写入配置审计失败: {exc}") from exc
+
+    def audit(self, limit=100):
+        if not self.audit_path.exists():
+            return []
+        connection = self._audit_connection()
+        try:
+            rows = connection.execute(
+                "SELECT * FROM config_audit ORDER BY id DESC LIMIT ?", (int(limit),)
+            ).fetchall()
+        finally:
+            connection.close()
+        return [
+            {
+                "id": row["id"],
+                "created_at": row["created_at"],
+                "actor": row["actor"],
+                "module": row["module"],
+                "action": row["action"],
+                "revision_before": row["revision_before"],
+                "revision_after": row["revision_after"],
+                "result": row["result"],
+                "details": json.loads(row["details"]),
+            }
+            for row in rows
+        ]
 
     def last_known_good(self, name):
         if name not in CONFIG_NAMES:

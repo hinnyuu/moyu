@@ -8,3 +8,4 @@
 - [2026-11-06 OpenAPI 增加分片端点](2026-11-06-openapi-upload-chunk.md)
 - [2026-11-06 OpenAPI 增加任务输出下载](2026-11-06-openapi-job-download.md)
 - [2026-11-06 契约状态校对](2026-11-06-contract-status.md)
+- [2026-11-06 OpenAPI 增加配置审计](2026-11-06-openapi-config-audit.md)

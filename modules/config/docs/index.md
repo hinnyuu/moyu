@@ -25,6 +25,7 @@ Python 包位于 `src/moyu_config/`：
   - `validate(name, data) -> dict`
   - `write(name, patch, revision=None) -> WriteResult`
   - `last_known_good(name) -> dict`
+  - `audit(limit=100) -> list`
 - `EffectiveConfig`：`global_config`、`modules`、`revisions`、`degraded`、`get(name)`、`to_dict()`。
 - `WriteResult`：`name`、`revision`、`data`、`backup`。
 - `ConfigError`：`code`、`message`、`details`、`to_dict()`。
@@ -42,8 +43,9 @@ schema 位于 `schemas/*.schema.json`；默认值位于 `src/moyu_config/default
 1. 创建 `config/`、`config/modules/`、`config/state/{last-known-good,backups}/`；
 2. 缺失文件写入内置默认值并校验；
 3. 已存在文件按 YAML 1.2 解析、禁止 anchor/alias/merge key、按 JSON Schema 严格校验；
-4. 非法时读取 `state/last-known-good/`；没有 LKG 则抛 `ConfigError`，不静默覆盖用户配置；
-5. 成功加载的每个文件写入 LKG。
+4. `schemaVersion` 低于当前版本时执行已注册迁移：先备份到 `state/backups/`，逐版本应用，校验后原子写回；
+5. 非法时读取 `state/last-known-good/`；没有 LKG 则抛 `ConfigError`，不静默覆盖用户配置；
+6. 成功加载的每个文件写入 LKG。
 
 写入：
 
@@ -51,7 +53,8 @@ schema 位于 `schemas/*.schema.json`；默认值位于 `src/moyu_config/default
 2. 深合并 patch，`null` 表示删除字段；
 3. 校验通过后先备份到 `state/backups/`，再原子替换；
 4. 新内容同步到 LKG；
-5. 校验失败或 revision 冲突时不改文件。
+5. 写入 `state/audit.db` 的 `config_audit` 表（actor、module、action、revision、result、details）；
+6. 校验失败或 revision 冲突时不改文件。
 
 ## 默认值
 
@@ -64,7 +67,11 @@ schema 位于 `schemas/*.schema.json`；默认值位于 `src/moyu_config/default
 - `revision_conflict`：并发写覆盖；
 - `lkg_missing`：配置非法且没有可用 LKG；
 - `config_write_failed` / `backup_failed`：磁盘或权限问题；
-- `schema_missing` / `schema_invalid`：schema 文件缺失或不是合法 JSON Schema。
+- `schema_missing` / `schema_invalid`：schema 文件缺失或不是合法 JSON Schema；
+- `schema_newer`：配置版本高于当前代码支持；
+- `migration_missing`：缺少逐版本迁移；
+- `migration_required`：只读模式遇到待迁移配置；
+- `audit_failed`：审计库写入失败。
 
 ## 测试
 
@@ -77,7 +84,9 @@ schema 位于 `schemas/*.schema.json`；默认值位于 `src/moyu_config/default
 - 写入、revision 冲突、schema 拒绝、备份文件；
 - 深合并与 `null` 删除；
 - secret 文件不被触碰；
-- 默认值全部通过 schema。
+- 默认值全部通过 schema；
+- 迁移 1→2、备份、审计 `migrate`；缺少迁移、只读待迁移、schema 过新；
+- 写入审计 `write`。
 
 运行：
 
