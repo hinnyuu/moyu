@@ -46,7 +46,7 @@ contracts, pipeline, storage, uploads, preview, config
 - `POST /api/v1/uploads`、`GET/PATCH /api/v1/uploads/{id}`、`POST /api/v1/uploads/{id}/finish`
 - `POST/GET /api/v1/jobs`、`GET/DELETE /api/v1/jobs/{id}`、`GET /api/v1/jobs/{id}/events`（SSE）、`GET /api/v1/jobs/{id}/download`
 - `GET /api/v1/assets/{id}/download`
-- `GET /api/v1/previews/{id}/{profile}`
+- `GET /api/v1/previews/{id}/{profile}`（配置 `preview.serviceUrl` 时代理内部预览服务，否则进程内 Pillow）
 - `POST /api/v1/admin/gateway/cert/reload`、`GET /api/v1/admin/gateway/cert/status`、`POST /api/v1/admin/gateway/token/rotate`、`GET/DELETE /api/v1/admin/gateway/token`
 
 网关管理接口通过 `GatewayAdminClient` 调用 gateway 内部管理 API；gateway 未启用时返回 `409 gateway_disabled`。token 轮换写入 `gateway.reload.api.tokenFile`，明文只在轮换响应中返回一次。

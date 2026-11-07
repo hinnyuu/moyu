@@ -22,7 +22,8 @@ RUN cargo build --release -p moyu-gateway
 FROM python:${PYTHON_VERSION}-slim-bookworm
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates \
+  && apt-get install -y --no-install-recommends \
+    ca-certificates ffmpeg libvips-tools openimageio-tools \
   && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --no-cache-dir \

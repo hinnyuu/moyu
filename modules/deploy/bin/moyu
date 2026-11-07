@@ -12,8 +12,9 @@ case "$role" in
   gateway) exec /usr/local/bin/moyu-gateway ;;
   api) exec python3 -m moyu_api ;;
   worker) exec python3 -m moyu_worker ;;
+  preview) exec python3 -m moyu_preview ;;
   *)
-    echo "moyu: 未知角色 $role（可用：gateway api worker）" >&2
+    echo "moyu: 未知角色 $role（可用：gateway api worker preview）" >&2
     exit 64
     ;;
 esac

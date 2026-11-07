@@ -22,7 +22,7 @@ Pod: moyu
 ├─ gateway   # 可选：项目自己终止 TLS 时启用
 ├─ api       # HTTP API、Web 静态文件、当前内置图片预览
 ├─ worker    # 打包任务
-├─ preview   # 目标：独立预览容器（当前内置在 api）
+├─ preview   # 图片/视频/EXR 预览服务
 └─ tusd      # 目标：独立上传容器（当前未接入）
 ```
 
@@ -41,5 +41,5 @@ Pod: moyu
 ## 当前状态
 
 - 核心打包链路、API、Web、gateway、deploy、wasm 核心已实现并有 CI。
-- preview 目前内置在 api；tusd 尚未接入；视频/EXR 预览未启用。
+- preview 已是独立容器；tusd 尚未接入；HLS 尚未实现。
 - 尚未创建 v0.0.1 标签。

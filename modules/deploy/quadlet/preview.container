@@ -1,0 +1,21 @@
+[Unit]
+Description=moyu preview
+After=moyu-pod.service
+
+[Container]
+Image=${MOYU_IMAGE}
+ContainerName=moyu-preview
+Pod=moyu.pod
+Exec=moyu preview
+Environment=MOYU_CONFIG_DIR=/config
+Environment=MOYU_PREVIEW_LISTEN=0.0.0.0:${MOYU_PREVIEW_PORT}
+Volume=${MOYU_CONFIG_DIR}:/config:ro,Z
+Volume=${MOYU_DATA_DIR}:/data:Z
+DropCapability=ALL
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

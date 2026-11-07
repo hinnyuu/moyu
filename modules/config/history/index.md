@@ -9,3 +9,4 @@
 - [2026-11-06 只读加载模式](2026-11-06-readonly-config.md)
 - [2026-11-06 网关 token 默认路径](2026-11-06-token-path.md)
 - [2026-11-06 schema 迁移与审计](2026-11-06-migrations-audit.md)
+- [2026-11-06 预览服务地址配置](2026-11-06-preview-service-url.md)

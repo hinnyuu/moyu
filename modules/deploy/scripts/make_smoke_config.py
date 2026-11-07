@@ -21,6 +21,7 @@ def main():
     parser.add_argument("--gateway-port", type=int, required=True)
     parser.add_argument("--cert-dir", required=True)
     parser.add_argument("--admin-port", type=int, default=9443)
+    parser.add_argument("--preview-url", default="")
     args = parser.parse_args()
 
     provider = ConfigProvider(args.config_dir)
@@ -30,8 +31,11 @@ def main():
         {"dataRoot": args.data_root},
         revision=effective.revisions["storage"],
     )
+    preview_patch = {"cacheDir": args.cache_dir}
+    if args.preview_url:
+        preview_patch["serviceUrl"] = args.preview_url
     provider.write(
-        "preview", {"cacheDir": args.cache_dir}, revision=effective.revisions["preview"]
+        "preview", preview_patch, revision=effective.revisions["preview"]
     )
     provider.write(
         "api", {"webRoot": args.web_root}, revision=effective.revisions["api"]

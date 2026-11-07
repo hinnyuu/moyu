@@ -18,7 +18,7 @@ ghcr.io/hinnyuu/moyu:<version>
 | api | `moyu api` | HTTP API、Web 静态文件 |
 | worker | `moyu worker` | 打包任务 |
 | preview | `moyu preview` | 媒体预览代理 |
-| tusd | `moyu tusd` | 大文件断点续传 |
+| tusd | `moyu tusd` | 大文件断点续传（尚未接入） |
 
 ## 2. 两种模式
 

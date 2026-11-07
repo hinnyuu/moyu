@@ -77,6 +77,7 @@ DEFAULTS = {
         "schemaVersion": 1,
         "enabled": True,
         "cacheDir": "/data/preview",
+        "serviceUrl": "",
         "concurrency": 2,
         "maxMemoryBytes": 268435456,
         "timeoutSeconds": 60,

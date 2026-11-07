@@ -7,3 +7,4 @@
 - [2026-11-06 进程级 E2E](2026-11-06-process-e2e.md)
 - [2026-11-06 Podman smoke](2026-11-06-podman-smoke.md)
 - [2026-11-06 同步网关 token 路径](2026-11-06-token-path.md)
+- [2026-11-06 preview 容器与媒体工具](2026-11-06-preview-container.md)

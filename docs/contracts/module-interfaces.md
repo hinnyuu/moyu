@@ -182,7 +182,7 @@ tusd 实现通过完成钩子调用 `finish_session`；API 不直接写上传文
 
 ## 5. 预览
 
-### `PreviewProvider`
+### `PreviewProvider` / `PreviewService`
 
 ```text
 probe(asset_id) -> MediaInfo
@@ -193,8 +193,8 @@ delete(asset_id) -> void
 
 `PreviewArtifact`：
 
-- 当前实现：Pillow 图片缩略图/显示代理；
-- 待实现：视频 poster、MP4 代理、HLS、EXR；
+- 当前实现：Pillow 图片、ffmpeg 视频 poster/MP4 代理、oiiotool EXR；
+- 待实现：HLS；
 - 缓存键：`asset_sha256 + profile`；
 - 资源限制、超时、并发上限由 provider 配置。
 

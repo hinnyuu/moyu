@@ -19,6 +19,7 @@ from moyu_uploads import UploadError, UploadSessionStore
 
 from .auth import AuthError, AuthManager
 from .gateway_admin import GatewayAdminClient, GatewayAdminError
+from .preview_client import PreviewClient, PreviewClientError
 
 ERROR_STATUS = {
     "auth_required": 401,
@@ -52,6 +53,9 @@ ERROR_STATUS = {
     "gateway_unreachable": 502,
     "gateway_admin_error": 502,
     "reload_failed": 502,
+    "preview_unreachable": 502,
+    "preview_service_error": 502,
+    "preview_failed": 502,
 }
 
 
@@ -91,7 +95,7 @@ def _asset_dict(asset):
     }
 
 
-def create_app(storage, config_provider, auth, gateway_admin=None):
+def create_app(storage, config_provider, auth, gateway_admin=None, preview_client=None):
     effective = config_provider.load()
     api_config = effective.modules["api"]
     uploads_config = effective.modules["uploads"]
@@ -112,6 +116,13 @@ def create_app(storage, config_provider, auth, gateway_admin=None):
         max_memory_bytes=preview_config.get("maxMemoryBytes", 256 * 1024 * 1024),
         timeout_seconds=preview_config.get("timeoutSeconds", 60),
     )
+    if preview_client is None:
+        service_url = str(preview_config.get("serviceUrl") or "").strip()
+        if service_url:
+            preview_client = PreviewClient(
+                service_url,
+                timeout=preview_config.get("timeoutSeconds", 60),
+            )
     if gateway_admin is None:
         gateway_config = effective.modules.get("gateway", {})
         reload_api = gateway_config.get("reload", {}).get("api", {})
@@ -132,6 +143,7 @@ def create_app(storage, config_provider, auth, gateway_admin=None):
     app.state.uploads = uploads
     app.state.previews = previews
     app.state.gateway_admin = gateway_admin
+    app.state.preview_client = preview_client
 
     def current_session(request: Request):
         token = request.cookies.get(auth.cookie_name)
@@ -187,6 +199,7 @@ def create_app(storage, config_provider, auth, gateway_admin=None):
         (PreviewError, "preview"),
         (AuthError, "api"),
         (GatewayAdminError, "gateway"),
+        (PreviewClientError, "preview"),
     ):
         register(exc_type, module)
 
@@ -384,11 +397,15 @@ def create_app(storage, config_provider, auth, gateway_admin=None):
 
     @app.get("/api/v1/previews/{asset_id}/{profile}")
     async def get_preview(asset_id: str, profile: str, session=Depends(current_session)):
+        if preview_client is not None:
+            body, media = preview_client.generate(asset_id, profile)
+            return Response(content=body, media_type=media)
         artifact = previews.generate(asset_id, profile)
         media = {
             "jpeg": "image/jpeg",
             "png": "image/png",
             "webp": "image/webp",
+            "mp4": "video/mp4",
         }.get(artifact.format, "application/octet-stream")
         return FileResponse(artifact.path, media_type=media)
 

@@ -18,6 +18,8 @@ from pathlib import Path
 
 from moyu_storage import AssetStore, StorageError
 
+from . import external
+
 try:
     from PIL import Image, ImageOps
 except ImportError:  # pragma: no cover - exercised by the CLI environment
@@ -27,6 +29,7 @@ except ImportError:  # pragma: no cover - exercised by the CLI environment
 DEFAULT_PROFILES = {
     "thumb": {"maxWidth": 256, "maxHeight": 256, "format": "webp", "quality": 80},
     "view": {"maxWidth": 1920, "maxHeight": 1920, "format": "jpeg", "quality": 85},
+    "proxy": {"maxWidth": 1280, "maxHeight": 720, "format": "mp4", "quality": 23},
 }
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp", ".avif", ".bmp", ".gif"}
 VIDEO_SUFFIXES = {".mp4", ".mov", ".mkv", ".webm"}
@@ -82,7 +85,7 @@ def _normalize_profile(profile):
         raise PreviewError("profile_invalid", "预览尺寸必须为正")
     if not 1 <= quality <= 100:
         raise PreviewError("profile_invalid", "quality 必须在 1-100")
-    if fmt not in ("jpeg", "png", "webp"):
+    if fmt not in ("jpeg", "png", "webp", "mp4"):
         raise PreviewError("profile_invalid", f"不支持的预览格式: {fmt}")
     return {
         "maxWidth": width,
@@ -130,11 +133,21 @@ class PreviewProvider:
             "size": asset.size,
         }
         if suffix in VIDEO_SUFFIXES:
-            return {**base, "type": "video", "format": suffix.lstrip("."), "supported": False,
-                    "reason": "ffmpeg provider 尚未启用"}
+            try:
+                info = external.probe_video(path, timeout=self.timeout_seconds)
+            except external.ExternalError as exc:
+                raise PreviewError(exc.code, exc.message, exc.details) from exc
+            info.update(base)
+            info.setdefault("format", suffix.lstrip("."))
+            return info
         if suffix in EXR_SUFFIXES:
-            return {**base, "type": "image", "format": "exr", "supported": False,
-                    "reason": "OpenImageIO provider 尚未启用"}
+            try:
+                info = external.probe_exr(path, timeout=self.timeout_seconds)
+            except external.ExternalError as exc:
+                raise PreviewError(exc.code, exc.message, exc.details) from exc
+            info.update(base)
+            info["format"] = "exr"
+            return info
         if suffix not in IMAGE_SUFFIXES:
             return {**base, "type": "unknown", "format": suffix.lstrip("."), "supported": False,
                     "reason": "未支持的格式"}
@@ -179,6 +192,23 @@ class PreviewProvider:
         key = self._cache_key(asset, normalized)
         return self.cache_dir / asset.id / key / f"preview.{normalized['format']}"
 
+    def _artifact(self, asset_id, name, normalized, target, cached):
+        fmt = normalized["format"]
+        width = height = 0
+        if fmt != "mp4" and Image is not None:
+            with Image.open(target) as image:
+                width, height = image.size
+        return PreviewArtifact(
+            asset_id=asset_id,
+            profile=name,
+            path=str(target),
+            width=width,
+            height=height,
+            format=fmt,
+            bytes=target.stat().st_size,
+            cached=cached,
+        )
+
     def generate(self, asset_id, profile):
         name, normalized = self._resolve_profile(profile)
         asset = self._asset(asset_id)
@@ -188,6 +218,17 @@ class PreviewProvider:
                 "preview_unsupported",
                 f"暂不支持该格式: {info.get('reason', info.get('format'))}",
             )
+        suffix = self.assets.path_for(asset.id).suffix.lower() or Path(
+            asset.original_name
+        ).suffix.lower()
+        target = self.preview_path(asset.id, normalized)
+        if target.exists():
+            return self._artifact(asset.id, name, normalized, target, True)
+        if suffix in VIDEO_SUFFIXES:
+            return self._generate_external(asset, name, normalized, target, "video")
+        if suffix in EXR_SUFFIXES:
+            return self._generate_external(asset, name, normalized, target, "exr")
+
         if Image is None:
             raise PreviewError("preview_unavailable", "Pillow 不可用")
         estimated = info["width"] * info["height"] * 4
@@ -197,20 +238,6 @@ class PreviewProvider:
                 "图像解码内存超过限制",
                 [f"estimated={estimated}", f"max={self.max_memory_bytes}"],
             )
-
-        target = self.preview_path(asset.id, normalized)
-        if target.exists():
-            with Image.open(target) as image:
-                return PreviewArtifact(
-                    asset_id=asset.id,
-                    profile=name,
-                    path=str(target),
-                    width=image.width,
-                    height=image.height,
-                    format=normalized["format"],
-                    bytes=target.stat().st_size,
-                    cached=True,
-                )
 
         if not self._semaphore.acquire(timeout=self.timeout_seconds):
             raise PreviewError("preview_busy", "预览队列已满")
@@ -236,7 +263,11 @@ class PreviewProvider:
                 )
                 os.close(fd)
                 try:
-                    image.save(tmp, format=normalized["format"].upper(), quality=normalized["quality"])
+                    image.save(
+                        tmp,
+                        format=normalized["format"].upper(),
+                        quality=normalized["quality"],
+                    )
                     os.replace(tmp, target)
                     tmp = None
                 finally:
@@ -245,20 +276,35 @@ class PreviewProvider:
                             os.unlink(tmp)
                         except OSError:
                             pass
-                width, height = image.size
             if time.monotonic() - started > self.timeout_seconds:
                 target.unlink(missing_ok=True)
                 raise PreviewError("preview_timeout", "预览生成超时")
-            return PreviewArtifact(
-                asset_id=asset.id,
-                profile=name,
-                path=str(target),
-                width=width,
-                height=height,
-                format=normalized["format"],
-                bytes=target.stat().st_size,
-                cached=False,
-            )
+            return self._artifact(asset.id, name, normalized, target, False)
+        finally:
+            self._semaphore.release()
+
+    def _generate_external(self, asset, name, normalized, target, kind):
+        if not self._semaphore.acquire(timeout=self.timeout_seconds):
+            raise PreviewError("preview_busy", "预览队列已满")
+        started = time.monotonic()
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            source = self.assets.path_for(asset.id)
+            try:
+                if kind == "video":
+                    external.generate_video(
+                        source, target, normalized, self.timeout_seconds
+                    )
+                else:
+                    external.generate_exr(
+                        source, target, normalized, self.timeout_seconds
+                    )
+            except external.ExternalError as exc:
+                raise PreviewError(exc.code, exc.message, exc.details) from exc
+            if time.monotonic() - started > self.timeout_seconds:
+                target.unlink(missing_ok=True)
+                raise PreviewError("preview_timeout", "预览生成超时")
+            return self._artifact(asset.id, name, normalized, target, False)
         finally:
             self._semaphore.release()
 

@@ -1,6 +1,6 @@
 # preview 模块文档
 
-状态：v0.0.1 阶段 2 最小实现（Pillow，图片预览）。
+状态：v0.0.1 阶段 2 实现（Pillow + ffmpeg + OpenImageIO，图片/视频/EXR 预览）。
 
 ## 职责
 
@@ -8,11 +8,11 @@
 
 默认服务端处理；缓存键=资产 sha256+profile；独立容器可限制 CPU/内存/超时；API 只返回预览地址。
 
-当前实现只覆盖 Pillow 能解码的栅格图片（PNG/JPEG/TIFF/WebP/AVIF/BMP/GIF）。视频、EXR 返回 `supported: false`，等待 ffmpeg / OpenImageIO provider。
+图片走 Pillow；视频走 ffmpeg（poster 图片或 MP4 代理）；EXR 走 oiiotool。工具不可用时在 `probe` 返回 `supported: false`，`generate` 返回 `preview_unsupported`。
 
 ## 非职责
 
-不打包 ZIP、不改元数据、不直接对公网、不提供 HTTP 路由。
+不打包 ZIP、不改元数据、不直接对公网；只提供 Pod 内部 HTTP 服务。
 
 ## 依赖
 
@@ -29,13 +29,21 @@ Python 包位于 `src/moyu_preview/`：
   - `delete(asset_id)`
 - `PreviewArtifact`：asset_id、profile、path、width、height、format、bytes、cached。
 - `PreviewError`：`code` / `message` / `details`。
+- `moyu_preview/service.py`：内部 HTTP 服务
+  - `GET /healthz`（工具可用性）
+  - `GET /probe/{asset_id}`
+  - `GET /preview/{asset_id}/{profile}`
+  - `POST /purge/{asset_id}`
 
 内置 profile：
 
 ```text
 thumb: maxWidth=256, maxHeight=256, format=webp, quality=80
 view:  maxWidth=1920, maxHeight=1920, format=jpeg, quality=85
+proxy: maxWidth=1280, maxHeight=720, format=mp4, quality=23
 ```
+
+视频请求 `thumb`/`view` 生成首帧图片；请求 `proxy` 生成 MP4 代理。HLS 尚未实现。
 
 `generate` 也接受自定义 profile 映射。
 
@@ -56,6 +64,12 @@ view:  maxWidth=1920, maxHeight=1920, format=jpeg, quality=85
 ## 失败模式
 
 资产不存在、格式不支持、解码失败、内存超限、队列忙、超时、磁盘写失败。
+
+## 配置
+
+- `preview.cacheDir`：缓存根目录；
+- `preview.serviceUrl`：API 调用预览服务的内部地址；为空时 API 在进程内调用 provider；
+- `preview.profiles`：额外/覆盖 profile。
 
 ## 测试
 

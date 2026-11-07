@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 IMAGE="${MOYU_SMOKE_IMAGE:-moyu:smoke}"
 PUBLIC_PORT="${MOYU_SMOKE_PUBLIC_PORT:-18080}"
 API_PORT="${MOYU_SMOKE_API_PORT:-18081}"
+PREVIEW_PORT="${MOYU_SMOKE_PREVIEW_PORT:-18082}"
 GATEWAY_PORT="${MOYU_SMOKE_GATEWAY_PORT:-18443}"
 ADMIN_PORT="${MOYU_SMOKE_ADMIN_PORT:-19443}"
 POD="moyu-smoke-$$"
@@ -17,6 +18,8 @@ cleanup() {
     podman ps -a || true
     echo "--- api logs ---"
     podman logs "${POD}-api" 2>&1 | tail -40 || true
+    echo "--- preview logs ---"
+    podman logs "${POD}-preview" 2>&1 | tail -40 || true
     echo "--- worker logs ---"
     podman logs "${POD}-worker" 2>&1 | tail -40 || true
     echo "--- gateway logs ---"
@@ -43,7 +46,8 @@ PYTHONPATH="$ROOT/modules/config/src" python3 "$ROOT/modules/deploy/scripts/make
   --upstream "http://127.0.0.1:${API_PORT}" \
   --gateway-port "${GATEWAY_PORT}" \
   --cert-dir /certs \
-  --admin-port "${ADMIN_PORT}"
+  --admin-port "${ADMIN_PORT}" \
+  --preview-url "http://127.0.0.1:${PREVIEW_PORT}"
 
 openssl req -x509 -newkey rsa:2048 -nodes \
   -keyout "$TMP/certs/tls.key" -out "$TMP/certs/tls.crt" -days 1 \
@@ -63,6 +67,13 @@ podman run -d --pod "$POD" --name "${POD}-api" \
   -v "$TMP/data:/data" \
   -v "$TMP/secrets:/run/secrets:ro" \
   "$IMAGE" api
+
+podman run -d --pod "$POD" --name "${POD}-preview" \
+  -e MOYU_CONFIG_DIR=/config \
+  -e MOYU_PREVIEW_LISTEN="0.0.0.0:${PREVIEW_PORT}" \
+  -v "$TMP/config:/config:ro" \
+  -v "$TMP/data:/data" \
+  "$IMAGE" preview
 
 podman run -d --pod "$POD" --name "${POD}-worker" \
   -e MOYU_CONFIG_DIR=/config \
@@ -103,9 +114,11 @@ session="$(curl -k -s -b "$TMP/cookies" "https://127.0.0.1:${PUBLIC_PORT}/api/v1
 echo "$session" | grep -q '"username":"admin"'
 echo "$session" | grep -q '"csrf"'
 
-if ! podman ps --format '{{.Names}}' | grep -q "${POD}-worker"; then
-  echo "worker container is not running" >&2
-  exit 1
-fi
+for name in worker preview; do
+  if ! podman ps --format '{{.Names}}' | grep -q "${POD}-${name}"; then
+    echo "${name} container is not running" >&2
+    exit 1
+  fi
+done
 
-echo "PASS: image roles, pod networking, TLS gateway, config/data/secrets mounts, session login"
+echo "PASS: image roles, pod networking, TLS gateway, preview container, config/data/secrets mounts, session login"
