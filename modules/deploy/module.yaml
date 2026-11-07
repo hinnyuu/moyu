@@ -9,5 +9,6 @@ history: history/index.md
 wiki: wiki/index.md
 tests:
   - bin/moyu
+  - scripts/process_e2e.py
   - container/Containerfile
   - quadlet

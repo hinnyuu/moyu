@@ -129,6 +129,22 @@ paths:
       responses:
         "200":
           description: text/event-stream
+  /api/v1/jobs/{id}/download:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: 下载任务输出 ZIP
+      responses:
+        "200":
+          description: 文件流
+        "409":
+          description: 任务尚未成功完成
+        "404":
+          description: 输出不存在
   /api/v1/assets/{id}/download:
     parameters:
       - name: id

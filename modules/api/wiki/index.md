@@ -27,6 +27,16 @@ curl -b cookies.txt -X PUT https://<host>/api/v1/config/worker \
   -d '{"patch":{"concurrency":4},"revision":"<revision>"}'
 ```
 
+## 下载任务输出
+
+任务 `succeeded` 后：
+
+```bash
+curl -b cookies.txt -o delivery.zip https://<host>/api/v1/jobs/<id>/download
+```
+
+未完成的任务返回 409 `job_not_ready`。
+
 ## 开发模式上传
 
 生产由 tusd 处理分片；同源部署或本地开发可以直接使用 API 的分片端点：

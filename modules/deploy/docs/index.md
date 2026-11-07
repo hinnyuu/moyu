@@ -75,6 +75,16 @@ modules/deploy/
 - api/worker 不发布公网端口；
 - 证书目录只读挂载。
 
+## 进程级 E2E
+
+无需 Podman，直接启动 api/worker 子进程，覆盖登录、上传、创建任务、worker 打包、下载与 ZIP/manifest 校验：
+
+```bash
+python3 modules/deploy/scripts/process_e2e.py
+```
+
+当前沙箱结果：PASS（任务成功，ZIP 1 个条目，manifest sha256 匹配，源资产未被修改）。
+
 ## 当前限制
 
 - 沙箱没有 Podman，容器未实际构建/运行；镜像构建与 pod smoke 待有 Podman 的环境验证。

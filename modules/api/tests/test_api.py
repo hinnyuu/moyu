@@ -209,6 +209,9 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(created.status_code, 202, created.text)
         job = created.json()
         self.assertEqual(job["status"], "queued")
+        not_ready = self.client.get(f"/api/v1/jobs/{job['id']}/download")
+        self.assertEqual(not_ready.status_code, 409)
+        self.assertEqual(not_ready.json()["code"], "job_not_ready")
 
         result = Worker(self.storage).run_once()
         self.assertEqual(result.status, "succeeded")
@@ -224,6 +227,11 @@ class ApiTests(unittest.TestCase):
 
         listed = self.client.get("/api/v1/jobs?status=succeeded").json()
         self.assertEqual([item["id"] for item in listed], [job["id"]])
+
+        download = self.client.get(f"/api/v1/jobs/{job['id']}/download")
+        self.assertEqual(download.status_code, 200)
+        self.assertEqual(download.headers["content-type"], "application/zip")
+        self.assertTrue(download.content.startswith(b"PK"))
 
     def test_cancel_and_errors(self):
         csrf = self.login()

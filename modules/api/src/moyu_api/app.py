@@ -340,6 +340,17 @@ def create_app(storage, config_provider, auth):
 
         return StreamingResponse(stream(), media_type="text/event-stream")
 
+    @app.get("/api/v1/jobs/{job_id}/download")
+    async def download_job(job_id: str, session=Depends(current_session)):
+        job = jobs.get_job(job_id)
+        if job.status != "succeeded":
+            raise _http(409, "job_not_ready", "任务尚未成功完成")
+        output_name = str(job.request.get("output_name") or "delivery.zip")
+        path = storage.output_path(job.id, output_name)
+        if not path.exists():
+            raise _http(404, "output_not_found", "任务输出不存在")
+        return FileResponse(path, filename=output_name, media_type="application/zip")
+
     @app.get("/api/v1/assets/{asset_id}/download")
     async def download_asset(asset_id: str, session=Depends(current_session)):
         asset = assets.get_asset(asset_id)
