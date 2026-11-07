@@ -1,0 +1,34 @@
+name: podman-arm64
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Install Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman openssl
+          podman info --format '{{.Host.Arch}}'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m pip install pyyaml jsonschema
+      - name: Build arm64 image
+        run: |
+          podman build --layers \
+            -f modules/deploy/container/Containerfile \
+            --build-arg TARGETARCH=arm64 \
+            -t moyu:smoke-arm64 .
+      - name: Pod smoke
+        env:
+          MOYU_SMOKE_IMAGE: moyu:smoke-arm64
+        run: bash modules/deploy/scripts/podman_smoke.sh
