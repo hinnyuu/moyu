@@ -19,6 +19,7 @@ import json
 import os
 import shutil
 import sqlite3
+import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -144,14 +145,31 @@ class Storage:
         return self
 
     def connect(self):
-        try:
-            conn = sqlite3.connect(self.db_path, timeout=30)
-        except sqlite3.Error as exc:
-            raise StorageError("storage_unavailable", f"无法打开数据库: {exc}") from exc
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA foreign_keys=ON")
-        return _Connection(conn)
+        deadline = time.monotonic() + 30
+        while True:
+            conn = None
+            try:
+                conn = sqlite3.connect(self.db_path, timeout=30)
+                conn.row_factory = sqlite3.Row
+                conn.execute("PRAGMA busy_timeout=30000")
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("PRAGMA foreign_keys=ON")
+                return _Connection(conn)
+            except sqlite3.OperationalError as exc:
+                if conn is not None:
+                    conn.close()
+                if "locked" in str(exc).lower() and time.monotonic() < deadline:
+                    time.sleep(0.1)
+                    continue
+                raise StorageError(
+                    "storage_unavailable", f"无法初始化数据库: {exc}"
+                ) from exc
+            except sqlite3.Error as exc:
+                if conn is not None:
+                    conn.close()
+                raise StorageError(
+                    "storage_unavailable", f"无法打开数据库: {exc}"
+                ) from exc
 
     def _under(self, base, child):
         candidate = (base / child).resolve()

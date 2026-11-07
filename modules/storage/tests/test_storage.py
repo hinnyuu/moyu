@@ -3,6 +3,7 @@ import os
 import sys
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -40,6 +41,14 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(self.storage.output_path("job1", "../out.zip").name, "out.zip")
         with self.assertRaises(StorageError):
             self.storage.preview_path("asset1", "..")
+
+    def test_concurrent_initialization(self):
+        def initialize(_index):
+            Storage(self.data).ensure_layout()
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            list(executor.map(initialize, range(8)))
+        self.assertTrue((self.data / "state.db").exists())
 
     def test_asset_lifecycle(self):
         store = AssetStore(self.storage)

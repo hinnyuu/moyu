@@ -61,6 +61,12 @@ created/queued/running → canceled
 - `claim_next()` 用条件更新原子领取最早的 `queued` 任务并置为 `running`；
 - `recover_stale()` 把 `running`/`verifying` 任务重置为 `queued`，供 worker 重启后重试。
 
+## 并发初始化
+
+- 所有连接设置 `busy_timeout=30000`；
+- 首次启用 WAL 时若遇到 `database is locked`，在 30 秒内退避重试；
+- api/worker/preview 同时启动时不会因建表/WAL 切换互相失败。
+
 ## 配额与清理
 
 - `quotaBytes <= 0` 表示不限制；否则登记资产前检查已用空间。
@@ -80,7 +86,8 @@ created/queued/running → canceled
 - 配额拒绝时不移动源文件；
 - 任务状态机、取消、终态保护、事件；
 - 新实例重启后读取同一数据库；
-- 上传与预览 TTL 清理。
+- 上传与预览 TTL 清理；
+- 8 线程并发 `ensure_layout`。
 
 运行：
 
