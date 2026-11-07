@@ -75,7 +75,7 @@ cert:
     api:
       enabled: true
       listen: "127.0.0.1:<admin-port>"
-      tokenFile: /run/secrets/gateway_reload_token
+      tokenFile: /config/secrets/gateway_reload_token
 upstream:
   url: "http://api:<internal-port>"
 ```

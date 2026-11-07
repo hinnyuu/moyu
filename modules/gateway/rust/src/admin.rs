@@ -4,9 +4,11 @@ use hyper::body::Incoming;
 use hyper::header::{AUTHORIZATION, CONTENT_TYPE};
 use hyper::{Request, Response, StatusCode};
 use hyper_util::rt::{TokioExecutor, TokioIo};
+use serde_json::json;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use subtle::ConstantTimeEq;
 use tokio::net::TcpListener;
 
 use crate::certs::CertStore;
@@ -40,36 +42,40 @@ async fn handle(
     if !authorized(&request, &state.token_file) {
         return Ok(json_response(
             StatusCode::UNAUTHORIZED,
-            r#"{"code":"unauthorized","message":"缺少或错误的 Bearer token"}"#,
+            json!({"code": "unauthorized", "message": "缺少或错误的 Bearer token"}),
         ));
     }
     match (request.method().as_str(), request.uri().path()) {
-        ("GET", "/status") => {
-            let body = format!(
-                r#"{{"status":"ok","cert_loaded_at":"{}","reloads":{}}}"#,
-                state.store.loaded_at(),
-                state.reloads.load(Ordering::Relaxed)
-            );
-            Ok(json_response(StatusCode::OK, &body))
-        }
-        ("POST", "/reload") => match state.store.reload() {
+        ("GET", "/status") | ("GET", "/admin/cert/status") => Ok(json_response(
+            StatusCode::OK,
+            json!({
+                "status": "ok",
+                "cert_loaded_at": state.store.loaded_at(),
+                "cert_sha256": state.store.cert_sha256(),
+                "reloads": state.reloads.load(Ordering::Relaxed),
+            }),
+        )),
+        ("POST", "/reload") | ("POST", "/admin/cert/reload") => match state.store.reload() {
             Ok(()) => {
                 state.reloads.fetch_add(1, Ordering::Relaxed);
-                let body = format!(
-                    r#"{{"status":"reloaded","cert_loaded_at":"{}"}}"#,
-                    state.store.loaded_at()
-                );
-                Ok(json_response(StatusCode::OK, &body))
+                Ok(json_response(
+                    StatusCode::OK,
+                    json!({
+                        "status": "reloaded",
+                        "cert_loaded_at": state.store.loaded_at(),
+                        "cert_sha256": state.store.cert_sha256(),
+                    }),
+                ))
             }
             Err(error) => Ok(json_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                &format!(r#"{{"code":"reload_failed","message":{}}}"#, escape(&error)),
+                json!({"code": "reload_failed", "message": error}),
             )),
         },
-        ("GET", "/healthz") => Ok(json_response(StatusCode::OK, r#"{"status":"ok"}"#)),
+        ("GET", "/healthz") => Ok(json_response(StatusCode::OK, json!({"status": "ok"}))),
         _ => Ok(json_response(
             StatusCode::NOT_FOUND,
-            r#"{"code":"not_found","message":"未知管理路径"}"#,
+            json!({"code": "not_found", "message": "未知管理路径"}),
         )),
     }
 }
@@ -87,15 +93,15 @@ fn authorized(request: &Request<Incoming>, token_file: &PathBuf) -> bool {
         .get(AUTHORIZATION)
         .and_then(|value| value.to_str().ok())
         .unwrap_or("");
-    let prefix = "Bearer ";
-    if !provided.starts_with(prefix) {
-        return false;
-    }
-    provided[prefix.len()..] == expected
+    let provided = match provided.strip_prefix("Bearer ") {
+        Some(value) => value,
+        None => return false,
+    };
+    provided.as_bytes().ct_eq(expected.as_bytes()).unwrap_u8() == 1
 }
 
-fn json_response(status: StatusCode, text: &str) -> Response<ProxyBody> {
-    let body: BoxBody<Bytes, BoxError> = Full::new(Bytes::from(text.to_string()))
+fn json_response(status: StatusCode, value: serde_json::Value) -> Response<ProxyBody> {
+    let body: BoxBody<Bytes, BoxError> = Full::new(Bytes::from(value.to_string()))
         .map_err(|never| match never {})
         .boxed();
     Response::builder()
@@ -109,8 +115,4 @@ fn json_response(status: StatusCode, text: &str) -> Response<ProxyBody> {
                     .boxed(),
             )
         })
-}
-
-fn escape(text: &str) -> String {
-    serde_json::to_string(text).unwrap_or_else(|_| "\"error\"".to_string())
 }

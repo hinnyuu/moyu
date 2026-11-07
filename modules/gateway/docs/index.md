@@ -27,10 +27,11 @@ Rust 包位于 `rust/src/`：
 
 管理 API：
 
-- `GET /status`：`{status,cert_loaded_at,reloads}`；
-- `POST /reload`：重读证书，返回新的 `cert_loaded_at`；
+- `GET /admin/cert/status`（兼容 `/status`）：`{status,cert_loaded_at,cert_sha256,reloads}`；
+- `POST /admin/cert/reload`（兼容 `/reload`）：重读证书，返回新的 `cert_loaded_at` 与 `cert_sha256`；
 - `GET /healthz`：健康检查；
-- 所有请求要求 `Authorization: Bearer <token>`；token 来自 `reload.api.tokenFile`，每次请求读取，支持轮换。
+- 所有请求要求 `Authorization: Bearer <token>`；token 来自 `reload.api.tokenFile`，每次请求读取，支持轮换；
+- `cert_sha256` 是证书文件的 SHA-256，不是 X.509 指纹；serial/not_after 尚未解析。
 
 ## 启动
 
@@ -76,7 +77,7 @@ reload:
   api:
     enabled: true
     listen: "127.0.0.1:<admin-port>"
-    tokenFile: /run/secrets/gateway_reload_token
+    tokenFile: /config/secrets/gateway_reload_token
 upstream:
   url: "http://api:<internal-port>"
 ```

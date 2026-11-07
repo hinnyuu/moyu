@@ -62,7 +62,7 @@ moyu-secrets:/run/secrets
 
 - `/data`：上传、资产、任务、输出、预览、SQLite。
 - `/config`：运行配置、last-known-good、备份。
-- `/run/secrets`：gateway reload token 等。
+- `/run/secrets`：bootstrap token 等；gateway reload token 在 `/config/secrets/`，由 api 轮换、gateway 只读。
 - `/certs`：证书，只读。
 
 rootless Podman 注意 `:U`/`:Z` 和 SELinux；权限在实现阶段细化。
@@ -197,7 +197,7 @@ curl -6 "https://host:${PORT}/"
 
 - 证书：`/certs/tls.crt`、`/certs/tls.key`，挂载目录。
 - 热重载默认轮询 + API；watch/SIGHUP 按配置开启。
-- token 由 WebUI 生成/轮换/复制；写入 `/run/secrets/gateway_reload_token`。
+- token 由 WebUI 生成/轮换/复制；写入 `/config/secrets/gateway_reload_token`。
 - 远程 curl 通过 SSH 隧道/VPN，不要把管理 API 暴露公网主路径。
 
 详见 [HTTPS、端口与证书](https-ports-certificates.md)。

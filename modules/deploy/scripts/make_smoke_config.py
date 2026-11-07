@@ -53,7 +53,7 @@ def main():
                 "api": {
                     "enabled": True,
                     "listen": f"127.0.0.1:{args.admin_port}",
-                    "tokenFile": "/run/secrets/gateway_reload_token",
+                    "tokenFile": "/config/secrets/gateway_reload_token",
                 },
             },
             "upstream": {"url": args.upstream},

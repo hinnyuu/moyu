@@ -49,7 +49,7 @@ contracts, pipeline, storage, uploads, preview, config
 - `GET /api/v1/previews/{id}/{profile}`
 - `POST /api/v1/admin/gateway/cert/reload`、`GET /api/v1/admin/gateway/cert/status`、`POST /api/v1/admin/gateway/token/rotate`、`GET/DELETE /api/v1/admin/gateway/token`
 
-网关管理接口当前返回 `501 gateway_admin_unavailable`，等待 gateway 客户端接入。
+网关管理接口通过 `GatewayAdminClient` 调用 gateway 内部管理 API；gateway 未启用时返回 `409 gateway_disabled`。token 轮换写入 `gateway.reload.api.tokenFile`，明文只在轮换响应中返回一次。
 
 `PUT /api/v1/config/{module}` 请求体：`{"patch": {...}, "revision": "<sha256>"}`；revison 不匹配返回 409。
 
@@ -69,7 +69,7 @@ contracts, pipeline, storage, uploads, preview, config
 
 ## 失败模式
 
-认证失败、CSRF 失败、bootstrap token 错误、密码错误、session 过期、请求体过大、配置 revision 冲突、任务/资产不存在、上传未完成、预览格式不支持、上游 501。
+认证失败、CSRF 失败、bootstrap token 错误、密码错误、session 过期、请求体过大、配置 revision 冲突、任务/资产不存在、上传未完成、预览格式不支持、gateway 未启用/不可达。
 
 错误统一为 `{"code","message","details","module"}`。
 
@@ -77,7 +77,7 @@ contracts, pipeline, storage, uploads, preview, config
 
 `tests/test_auth.py`（7 个）：密码哈希、初始化、登录、错误 token/密码、签名篡改、过期、CSRF、文件权限。
 
-`tests/test_api.py`（7 个）：健康检查与认证、配置读写与 revision、上传/下载/预览、任务 + worker、取消与 404、网关 501、请求体上限。
+`tests/test_api.py`（14 个）：健康检查与认证、配置读写与 revision、上传/下载/预览、任务 + worker、取消与 404、网关管理代理与 token、请求体上限。`tests/test_gateway_admin.py`（4 个）：网关管理客户端、token 文件、不可达。
 
 运行：
 

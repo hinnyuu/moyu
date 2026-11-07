@@ -6,3 +6,4 @@
 - [2026-11-06 Rust workspace 骨架](2026-11-06-gateway-phase0.md)
 - [2026-11-06 gateway 骨架格式化](2026-11-06-gateway-fmt.md)
 - [2026-11-06 阶段 2 最小实现](2026-11-06-gateway-implementation.md)
+- [2026-11-06 管理路径、证书哈希与常量时间 token](2026-11-06-gateway-token-contract.md)

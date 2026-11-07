@@ -7,3 +7,4 @@
 - [2026-11-06 阶段 2 最小实现](2026-11-06-config-implementation.md)
 - [2026-11-06 增加 gateway upstream 配置](2026-11-06-gateway-upstream.md)
 - [2026-11-06 只读加载模式](2026-11-06-readonly-config.md)
+- [2026-11-06 网关 token 默认路径](2026-11-06-token-path.md)

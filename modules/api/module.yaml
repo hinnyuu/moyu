@@ -10,3 +10,4 @@ wiki: wiki/index.md
 tests:
   - tests/test_auth.py
   - tests/test_api.py
+  - tests/test_gateway_admin.py

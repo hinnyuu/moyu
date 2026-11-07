@@ -114,9 +114,11 @@ MetadataReport {
 ### `ArchiveWriter`
 
 ```text
-add_entry(arcname, dos_time, stream, metadata) -> void
+add_entry(arcname, dos_time, stream, size=None, mode=0o644) -> void
 finalize() -> ArchiveSummary
-verify(path, manifest) -> VerifyResult
+abort() -> void
+verify_archive(path, expected=None, timezone="UTC", strict=True,
+               require_store=False, check_crc=False) -> VerifyResult
 ```
 
 要求：
@@ -138,9 +140,12 @@ verify(path, manifest) -> VerifyResult
 create_job(request) -> Job
 get_job(id) -> Job
 list_jobs(filter) -> [Job]
+claim_next() -> Job | None
+recover_stale() -> int
 update_status(id, status, progress, error) -> Job
 cancel_job(id) -> Job
 append_event(id, event) -> void
+events(id) -> [event]
 ```
 
 状态机：
@@ -154,10 +159,12 @@ created/queued/running → canceled
 ### `AssetStore`
 
 ```text
-register_asset(upload_session) -> Asset
+register_asset(source_path, original_name=None, media_type=...) -> Asset
+get_asset(id) -> Asset
 open_asset(id) -> reader
 path_for(id) -> path
-delete_asset(id) -> void
+list_assets(limit) -> [Asset]
+delete_asset(id) -> bool
 ```
 
 ### `UploadSessionStore`
@@ -167,7 +174,8 @@ create_session(metadata) -> session
 get_offset(session_id) -> int
 append_chunk(session_id, offset, data) -> int
 finish_session(session_id) -> Asset
-expire_sessions(ttl) -> void
+cancel_session(session_id) -> bool
+expire_sessions(ttl) -> int
 ```
 
 tusd 实现通过完成钩子调用 `finish_session`；API 不直接写上传文件。
@@ -177,16 +185,17 @@ tusd 实现通过完成钩子调用 `finish_session`；API 不直接写上传文
 ### `PreviewProvider`
 
 ```text
-probe(asset) -> MediaInfo
-generate(asset, profile) -> PreviewArtifact
-delete(asset) -> void
+probe(asset_id) -> MediaInfo
+generate(asset_id, profile) -> PreviewArtifact
+preview_path(asset_id, profile) -> path
+delete(asset_id) -> void
 ```
 
 `PreviewArtifact`：
 
-- 图片缩略图/显示代理；
-- 视频 poster、MP4 代理、HLS；
-- 缓存键：`asset_hash + profile`；
+- 当前实现：Pillow 图片缩略图/显示代理；
+- 待实现：视频 poster、MP4 代理、HLS、EXR；
+- 缓存键：`asset_sha256 + profile`；
 - 资源限制、超时、并发上限由 provider 配置。
 
 ## 6. 配置
@@ -194,13 +203,15 @@ delete(asset) -> void
 ### `ConfigProvider`
 
 ```text
-load(config_dir) -> EffectiveConfig
-validate(effective) -> ValidationResult
-write(module, patch, revision) -> ConfigResult
-last_known_good() -> EffectiveConfig
+ConfigProvider(config_dir, schemas_dir=None, read_only=False)
+load() -> EffectiveConfig
+validate(module, data) -> data
+write(module, patch, revision=None) -> WriteResult
+last_known_good(module) -> data
 ```
 
 - 只通过 `config` 模块读写；
+- `read_only=True` 时不创建/写入文件、不写 LKG，适合 worker；
 - 业务模块不直接读 YAML；
 - 运行配置与部署配置分离；
 - 详情见 `config.md`。
@@ -210,15 +221,17 @@ last_known_good() -> EffectiveConfig
 ### `GatewayAdmin`
 
 ```text
-reload_cert() -> CertStatus
-cert_status() -> CertStatus
+reload_cert() -> {status, cert_loaded_at, cert_sha256}
+cert_status() -> {status, cert_loaded_at, cert_sha256, reloads}
 rotate_token() -> TokenOnce
 revoke_token() -> void
+token_metadata() -> {exists, bytes, modified_at}
 ```
 
 - `reload_cert` 只重读挂载证书；
 - 不接受上传证书；
 - token 明文只展示一次；
+- `cert_sha256` 是证书文件 SHA-256，不是 X.509 指纹；
 - 详情见 `gateway-admin-api.md`。
 
 ## 8. 浏览器 WASM
@@ -226,12 +239,15 @@ revoke_token() -> void
 ### `WasmPackClient`
 
 ```text
-capabilities() -> {zip, transcode, opfs, shared_array_buffer}
-pack(plan, files) -> Blob/OPFS artifact
-transcode(file, profile) -> preview artifact
+capabilities() -> {format, metadata, maxInputBytes, maxEntries}
+pack(files, target_epoch, utc_offset_seconds) -> ZIP bytes
+PackBuilder.add_file(name, mtime_ns, data)
+PackBuilder.finish(target_epoch, utc_offset_seconds) -> ZIP bytes
+transcode(file, profile) -> preview artifact   # 待实现
 ```
 
 - 可选能力，默认关闭；
+- 当前只有 STORE ZIP 核心与 WASM 绑定，尚未产出浏览器 wasm/js 包；
 - 客户端 ZIP 只保证 DOS mtime，不承诺内部元数据改写；
 - 能力检测失败时自动回退服务端；
 - 不阻塞主链路。
@@ -245,8 +261,7 @@ transcode(file, profile) -> preview artifact
   code: string,
   message: string,
   module: string,
-  details: object,
-  retryable: bool
+  details: array
 }
 ```
 

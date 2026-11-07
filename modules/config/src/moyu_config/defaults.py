@@ -56,7 +56,7 @@ DEFAULTS = {
             "api": {
                 "enabled": True,
                 "listen": "127.0.0.1:9443",
-                "tokenFile": "/run/secrets/gateway_reload_token",
+                "tokenFile": "/config/secrets/gateway_reload_token",
             },
         },
         "upstream": {"url": "http://api"},

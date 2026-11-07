@@ -18,6 +18,7 @@ from moyu_storage import AssetStore, JobStore, StorageError
 from moyu_uploads import UploadError, UploadSessionStore
 
 from .auth import AuthError, AuthManager
+from .gateway_admin import GatewayAdminClient, GatewayAdminError
 
 ERROR_STATUS = {
     "auth_required": 401,
@@ -46,6 +47,11 @@ ERROR_STATUS = {
     "upload_incomplete": 409,
     "upload_closed": 409,
     "session_closed": 409,
+    "gateway_disabled": 409,
+    "gateway_token_missing": 503,
+    "gateway_unreachable": 502,
+    "gateway_admin_error": 502,
+    "reload_failed": 502,
 }
 
 
@@ -85,7 +91,7 @@ def _asset_dict(asset):
     }
 
 
-def create_app(storage, config_provider, auth):
+def create_app(storage, config_provider, auth, gateway_admin=None):
     effective = config_provider.load()
     api_config = effective.modules["api"]
     uploads_config = effective.modules["uploads"]
@@ -106,6 +112,14 @@ def create_app(storage, config_provider, auth):
         max_memory_bytes=preview_config.get("maxMemoryBytes", 256 * 1024 * 1024),
         timeout_seconds=preview_config.get("timeoutSeconds", 60),
     )
+    if gateway_admin is None:
+        gateway_config = effective.modules.get("gateway", {})
+        reload_api = gateway_config.get("reload", {}).get("api", {})
+        if gateway_config.get("enabled") and reload_api.get("enabled"):
+            gateway_admin = GatewayAdminClient(
+                reload_api.get("tokenFile", ""),
+                reload_api.get("listen", ""),
+            )
     max_json_body = int(api_config.get("maxJsonBodyBytes", 1048576))
     tus_base_path = str(uploads_config.get("tusBasePath", "/files")).rstrip("/")
 
@@ -117,6 +131,7 @@ def create_app(storage, config_provider, auth):
     app.state.jobs = jobs
     app.state.uploads = uploads
     app.state.previews = previews
+    app.state.gateway_admin = gateway_admin
 
     def current_session(request: Request):
         token = request.cookies.get(auth.cookie_name)
@@ -126,6 +141,11 @@ def create_app(storage, config_provider, auth):
             return auth.verify_session(token)
         except AuthError as exc:
             raise _http(_status_for(exc.code, 401), exc.code, exc.message, exc.details)
+
+    def require_gateway():
+        if gateway_admin is None:
+            raise _http(409, "gateway_disabled", "gateway 未启用或管理 API 未配置")
+        return gateway_admin
 
     def require_csrf(request: Request, session):
         try:
@@ -166,6 +186,7 @@ def create_app(storage, config_provider, auth):
         (UploadError, "uploads"),
         (PreviewError, "preview"),
         (AuthError, "api"),
+        (GatewayAdminError, "gateway"),
     ):
         register(exc_type, module)
 
@@ -370,25 +391,27 @@ def create_app(storage, config_provider, auth):
     @app.post("/api/v1/admin/gateway/cert/reload")
     async def gateway_reload(request: Request, session=Depends(current_session)):
         require_csrf(request, session)
-        raise _http(501, "gateway_admin_unavailable", "网关管理接口尚未接入")
+        return require_gateway().reload_cert()
 
     @app.get("/api/v1/admin/gateway/cert/status")
     async def gateway_cert_status(session=Depends(current_session)):
-        raise _http(501, "gateway_admin_unavailable", "网关管理接口尚未接入")
+        return require_gateway().cert_status()
 
     @app.post("/api/v1/admin/gateway/token/rotate", status_code=201)
     async def gateway_token_rotate(request: Request, session=Depends(current_session)):
         require_csrf(request, session)
-        raise _http(501, "gateway_admin_unavailable", "网关管理接口尚未接入")
+        token = require_gateway().rotate_token()
+        return {"token": token, "shown_once": True}
 
     @app.get("/api/v1/admin/gateway/token")
     async def gateway_token_status(session=Depends(current_session)):
-        raise _http(501, "gateway_admin_unavailable", "网关管理接口尚未接入")
+        return require_gateway().token_metadata()
 
-    @app.delete("/api/v1/admin/gateway/token")
+    @app.delete("/api/v1/admin/gateway/token", status_code=204)
     async def gateway_token_revoke(request: Request, session=Depends(current_session)):
         require_csrf(request, session)
-        raise _http(501, "gateway_admin_unavailable", "网关管理接口尚未接入")
+        require_gateway().revoke_token()
+        return Response(status_code=204)
 
     web_root = api_config.get("webRoot")
     if web_root and Path(web_root).is_dir():

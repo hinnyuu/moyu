@@ -33,6 +33,35 @@ PASSWORD = "secret-pass"
 BOOTSTRAP = "boot-token"
 
 
+class FakeGatewayAdmin:
+    def __init__(self):
+        self.token = ""
+        self.calls = []
+
+    def rotate_token(self):
+        self.token = "plain-token-once"
+        self.calls.append("rotate")
+        return self.token
+
+    def revoke_token(self):
+        self.token = ""
+        self.calls.append("revoke")
+
+    def token_metadata(self):
+        return {
+            "exists": bool(self.token),
+            "bytes": len(self.token),
+            "modified_at": "2026-11-06T00:00:00+00:00" if self.token else None,
+        }
+
+    def reload_cert(self):
+        self.calls.append("reload")
+        return {"status": "reloaded", "cert_sha256": "deadbeef"}
+
+    def cert_status(self):
+        return {"status": "ok", "cert_sha256": "deadbeef"}
+
+
 class ApiTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -53,7 +82,8 @@ class ApiTests(unittest.TestCase):
             secret_file=root / "session.secret",
             ttl_seconds=3600,
         )
-        self.app = create_app(self.storage, self.config, self.auth)
+        self.gateway = FakeGatewayAdmin()
+        self.app = create_app(self.storage, self.config, self.auth, gateway_admin=self.gateway)
         self.client = TestClient(self.app)
 
     def tearDown(self):
@@ -261,11 +291,33 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(missing_asset.status_code, 404)
         self.assertEqual(missing_asset.json()["code"], "asset_not_found")
 
-    def test_gateway_admin_not_implemented(self):
-        self.login()
-        response = self.client.get("/api/v1/admin/gateway/cert/status")
-        self.assertEqual(response.status_code, 501)
-        self.assertEqual(response.json()["code"], "gateway_admin_unavailable")
+    def test_gateway_admin_proxy_and_tokens(self):
+        csrf = self.login()
+        headers = self.csrf_headers(csrf)
+
+        status = self.client.get("/api/v1/admin/gateway/cert/status")
+        self.assertEqual(status.status_code, 200)
+        self.assertEqual(status.json()["cert_sha256"], "deadbeef")
+
+        no_csrf = self.client.post("/api/v1/admin/gateway/cert/reload")
+        self.assertEqual(no_csrf.status_code, 403)
+        reloaded = self.client.post("/api/v1/admin/gateway/cert/reload", headers=headers)
+        self.assertEqual(reloaded.status_code, 200)
+        self.assertEqual(reloaded.json()["status"], "reloaded")
+
+        rotated = self.client.post("/api/v1/admin/gateway/token/rotate", headers=headers)
+        self.assertEqual(rotated.status_code, 201)
+        self.assertEqual(rotated.json()["token"], "plain-token-once")
+        self.assertTrue(rotated.json()["shown_once"])
+
+        metadata = self.client.get("/api/v1/admin/gateway/token").json()
+        self.assertTrue(metadata["exists"])
+        self.assertNotIn("token", metadata)
+
+        revoked = self.client.delete("/api/v1/admin/gateway/token", headers=headers)
+        self.assertEqual(revoked.status_code, 204)
+        self.assertFalse(self.client.get("/api/v1/admin/gateway/token").json()["exists"])
+        self.assertEqual(self.gateway.calls, ["reload", "rotate", "revoke"])
 
     def test_request_size_limit(self):
         csrf = self.login()

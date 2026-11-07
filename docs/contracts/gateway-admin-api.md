@@ -31,20 +31,20 @@ Authorization: Bearer <token>
 
 ```json
 {
-  "ok": true,
-  "serial": "…",
-  "not_after": "…",
-  "fingerprint_sha256": "…",
-  "loaded_at": "…"
+  "status": "reloaded",
+  "cert_loaded_at": "…",
+  "cert_sha256": "…"
 }
 ```
+
+`cert_sha256` 是证书文件内容的 SHA-256，不是 X.509 指纹；serial/not_after 尚未解析。
 
 - 失败返回 4xx/5xx 和稳定错误码；
 - 不返回私钥内容。
 
 ### `GET /admin/cert/status`
 
-- 返回当前证书 serial、not_after、fingerprint、上次重载时间、上次错误；
+- 返回 `status`、`cert_loaded_at`、`cert_sha256`、`reloads`；
 - 不返回私钥；
 - 可用于 WebUI 和监控。
 
@@ -72,15 +72,14 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 ## 4. Token
 
 - 32 字节随机 token，base64url；
-- 写入共享 secret 文件：
+- 明文写入共享 secret 文件：
   ```text
-  /run/secrets/gateway_reload_token
+  /config/secrets/gateway_reload_token
   ```
-- gateway 每次请求读取文件；轮换后立即生效，无需重启；
-- 数据库只存 SHA-256 哈希、创建时间、最近使用、标签；
-- WebUI 生成/轮换/撤销，明文只展示一次，可复制；
+- 权限 0600；gateway 每次请求读取文件；轮换后立即生效，无需重启；
+- WebUI/API 生成/轮换/撤销，明文只在轮换响应中展示一次；
 - 撤销 = 写入空文件或禁用 API；
-- 审计日志记录来源、结果、证书 fingerprint；不记录 token。
+- 当前不维护 token 数据库元数据、最近使用与审计表，待补。
 
 ## 5. 证书重载触发
 
@@ -121,6 +120,7 @@ POST   /api/v1/admin/gateway/cert/reload
 GET    /api/v1/admin/gateway/cert/status
 ```
 
+- 已实现；gateway 未启用时返回 `409 gateway_disabled`；
 - 浏览器使用应用会话和 CSRF 防护；
 - API 读取 secret 文件并调用 gateway；
 - 只有“复制 token”场景才把明文 token 展示给用户一次；
@@ -128,11 +128,16 @@ GET    /api/v1/admin/gateway/cert/status
 
 ## 7. 测试要求
 
-- 无 token / 错 token / 正确 token；
-- token 轮换立即生效；
-- 证书 A → B 热重载，新握手使用 B；
-- 坏证书/私钥不匹配时旧证书继续服务；
+已覆盖：
+
+- 无 token / 错 token / 正确 token（gateway `authorized`）；
+- 证书 A → B 热重载与 `cert_sha256` 变化；
 - 启动无证书失败；
-- IPv4/IPv6 分别握手；
-- 大上传和 SSE 经网关不缓冲；
-- 管理 API 不暴露公网路径。
+- IPv4/IPv6 分别握手（人工 E2E）；
+- API token 轮换/撤销与文件权限（`test_gateway_admin.py`）；
+- API 网关管理代理与 CSRF（`test_api.py`）。
+
+待补：
+
+- 坏证书/私钥不匹配时旧证书继续服务（代码保留旧证书，但缺自动化测试）；
+- 大上传和 SSE 经网关不缓冲的自动化测试。

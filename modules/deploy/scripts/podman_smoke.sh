@@ -31,8 +31,9 @@ trap cleanup EXIT
 mkdir -p "$TMP/config/secrets" "$TMP/data" "$TMP/secrets" "$TMP/certs"
 chmod -R 0777 "$TMP/config" "$TMP/data"
 echo smoke-boot > "$TMP/secrets/bootstrap_token"
-echo smoke-admin-token > "$TMP/secrets/gateway_reload_token"
+echo smoke-admin-token > "$TMP/config/secrets/gateway_reload_token"
 chmod -R a+rX "$TMP/secrets"
+chmod 0644 "$TMP/config/secrets/gateway_reload_token"
 
 PYTHONPATH="$ROOT/modules/config/src" python3 "$ROOT/modules/deploy/scripts/make_smoke_config.py" \
   "$TMP/config" \
