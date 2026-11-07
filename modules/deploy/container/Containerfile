@@ -1,0 +1,51 @@
+# syntax=docker/dockerfile:1.7
+
+ARG NODE_VERSION=22
+ARG RUST_VERSION=1.99
+ARG PYTHON_VERSION=3.12
+
+FROM node:${NODE_VERSION}-alpine AS web
+WORKDIR /src/modules/web/app
+COPY modules/web/app/package.json modules/web/app/package-lock.json ./
+RUN npm ci
+COPY modules/web/app ./
+RUN npm run build
+
+FROM rust:${RUST_VERSION}-slim-bookworm AS gateway
+WORKDIR /src
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY modules/core-time/rust modules/core-time/rust
+COPY modules/gateway/rust modules/gateway/rust
+COPY modules/wasm-client/rust modules/wasm-client/rust
+RUN cargo build --release -p moyu-gateway
+
+FROM python:${PYTHON_VERSION}-slim-bookworm
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --no-cache-dir \
+  fastapi \
+  uvicorn \
+  pyyaml \
+  jsonschema \
+  pillow
+
+COPY --from=gateway /src/target/release/moyu-gateway /usr/local/bin/moyu-gateway
+COPY --from=web /src/modules/web/app/dist /opt/moyu/web
+COPY modules /opt/moyu/modules
+COPY modules/deploy/bin/moyu /usr/local/bin/moyu
+
+RUN chmod +x /usr/local/bin/moyu \
+  && useradd --create-home --uid 1000 moyu \
+  && mkdir -p /config /data /run/secrets /certs /app \
+  && ln -s /opt/moyu/web /app/web \
+  && chown -R moyu:moyu /config /data
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/opt/moyu/modules/api/src:/opt/moyu/modules/config/src:/opt/moyu/modules/storage/src:/opt/moyu/modules/uploads/src:/opt/moyu/modules/preview/src:/opt/moyu/modules/media-metadata/src:/opt/moyu/modules/archive-zip/src:/opt/moyu/modules/pipeline/src:/opt/moyu/modules/core-time/python:/opt/moyu/modules/worker/src
+
+USER moyu
+WORKDIR /home/moyu
+ENTRYPOINT ["/usr/local/bin/moyu"]

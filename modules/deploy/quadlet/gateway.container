@@ -1,0 +1,23 @@
+[Unit]
+Description=moyu gateway (standalone TLS)
+After=moyu-pod.service
+
+[Container]
+Image=${MOYU_IMAGE}
+ContainerName=moyu-gateway
+Pod=moyu.pod
+Exec=moyu gateway
+Environment=MOYU_GATEWAY_CONFIG=/config/modules/gateway.yaml
+ReadOnly=true
+Tmpfs=/tmp:rw,noexec,nosuid,size=16m
+Volume=${MOYU_CONFIG_DIR}:/config:ro,Z
+Volume=${MOYU_CERTS_DIR}:/certs:ro,Z
+Volume=${MOYU_SECRETS_DIR}:/run/secrets:ro,Z
+DropCapability=ALL
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

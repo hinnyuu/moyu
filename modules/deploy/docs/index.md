@@ -1,12 +1,12 @@
 # deploy 模块文档
 
-状态：v0.0.1 架构草稿，尚未实现。
+状态：v0.0.1 阶段 2 最小实现（单镜像，gateway/api/worker）。
 
 ## 职责
 
-Podman/Quadlet、单镜像多容器 pod、卷、端口、证书挂载、GHCR 发布和运维 wiki。
+Podman/Quadlet、单镜像多容器 pod、卷、端口、证书挂载、镜像构建和运维说明。
 
-一个镜像、一个 pod、多容器；external Caddy 与 standalone 两种 profile；不使用 Docker Compose；host/bridge 端口说明；资源限制；升级/回滚；GHCR。
+一个镜像、一个 pod、多容器；external Caddy 与 standalone 两种 profile；不使用 Docker Compose；host/bridge 端口说明；资源限制；升级/回滚。
 
 ## 非职责
 
@@ -16,18 +16,93 @@ Podman/Quadlet、单镜像多容器 pod、卷、端口、证书挂载、GHCR 发
 
 全部模块的运维事实
 
-## 接口
+## 实现
 
-Podman pod/Quadlet；镜像构建/发布
+```text
+modules/deploy/
+├─ bin/moyu                  # 角色分发入口
+├─ container/Containerfile   # 单镜像构建
+└─ quadlet/
+   ├─ moyu.pod
+   ├─ api.container
+   ├─ worker.container
+   ├─ gateway.container
+   └─ deploy.env.example
+```
+
+镜像：
+
+- Web 构建阶段：Node 编译 `modules/web/app`；
+- Gateway 构建阶段：Rust 编译 `moyu-gateway`；
+- 运行阶段：Python 3.12 + FastAPI/uvicorn/PyYAML/jsonschema/Pillow，包含全部模块源码、Web 静态产物和 gateway 二进制；
+- 入口：`moyu <gateway|api|worker>`。
+
+## 容器与端口
+
+当前 pod 包含：
+
+| 容器 | 入口 | 端口 | 卷 |
+| --- | --- | --- | --- |
+| gateway | `moyu gateway` | `${MOYU_GATEWAY_PORT}`，host 发布 `${MOYU_PUBLIC_PORT}` | `/config` 只读、`/certs` 只读、`/run/secrets` 只读 |
+| api | `moyu api` | `${MOYU_API_PORT}`（pod 内） | `/config` 读写、`/data`、`/run/secrets` 只读 |
+| worker | `moyu worker` | 无 | `/config` 只读、`/data` |
+
+所有端口和路径来自 `deploy.env` / systemd 环境，不在单元文件中写死。
+
+## 两种模式
+
+### 外部 Caddy
+
+不启动 `gateway.container`，不发布 `${MOYU_PUBLIC_PORT}`；Caddy 反向代理到 Pod 内的 api 端口。
+
+### Standalone TLS
+
+启动 `gateway.container`，发布 `${MOYU_PUBLIC_PORT}:${MOYU_GATEWAY_PORT}`；证书挂载到 `/certs`；管理 API 保持 Pod 内回环。
+
+## 配置要求
+
+- `api.webRoot` 使用镜像默认 `/app/web`（镜像内符号链接到 `/opt/moyu/web`）。
+- `storage.dataRoot` 使用 `/data`。
+- `preview.cacheDir` 使用 `/data/preview`。
+- `gateway.upstream.url` 必须指向 Pod 内 API，例如 `http://api:<api-port>`。
+- secret：`/run/secrets/bootstrap_token`、`/config/secrets/session-state.json`、`/config/secrets/session.secret`。
+
+## 资源与安全
+
+- `DropCapability=ALL`、`NoNewPrivileges=true`；
+- gateway 只读根文件系统 + `/tmp` tmpfs；
+- worker/api 使用非 root 用户 `moyu`（UID 1000）；
+- api/worker 不发布公网端口；
+- 证书目录只读挂载。
+
+## 当前限制
+
+- 沙箱没有 Podman，容器未实际构建/运行；镜像构建与 pod smoke 待有 Podman 的环境验证。
+- `preview` 目前由 api 进程内调用，尚未拆成独立容器。
+- `tusd` 尚未打进镜像；当前使用 API 的 tus 兼容分片端点。独立 tusd 容器待补。
+- 镜像未包含 ffmpeg/libvips/OpenImageIO；视频/EXR 预览仍返回不支持。
+- 未实现 GHCR 发布 workflow、SBOM/漏洞扫描、升级/回滚脚本。
 
 ## 失败模式
 
-端口冲突、卷权限、SELinux、IPv6、证书、镜像升级。
+端口冲突、卷权限、SELinux、IPv6、证书错误、镜像升级、缺少 secret、上游地址错误。
 
 ## 测试
 
-Podman pod smoke、端口/IPv6、TLS、升级、资源限制。
+当前可验证的部分：
+
+- `Containerfile` 语法与构建阶段人工审阅；
+- 角色入口脚本语法检查（`sh -n`）；
+- Quadlet 单元文件与 `deploy.env.example` 占位符一致性；
+- 各模块自身测试。
+
+待有 Podman 的环境：
+
+- 构建单镜像；
+- `podman play kube` 或 Quadlet 启动 pod；
+- 端口/IPv6/TLS 冒烟；
+- 升级、回滚、资源限制。
 
 ## 替换点
 
-Quadlet ↔ play kube；部署方式可替换。
+Quadlet ↔ `podman play kube`；部署方式可替换。镜像角色入口保持 `moyu <role>`。

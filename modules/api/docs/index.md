@@ -36,6 +36,8 @@ contracts, pipeline, storage, uploads, preview, config
 
 ## 接口
 
+容器入口：`moyu api` / `python3 -m moyu_api`；读取 `MOYU_CONFIG_DIR` 与认证文件环境变量，监听 `MOYU_API_LISTEN=host:port`。
+
 `create_app(storage, config_provider, auth) -> FastAPI`，挂载：
 
 - `GET /api/v1/health`

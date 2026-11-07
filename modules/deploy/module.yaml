@@ -1,10 +1,13 @@
 name: deploy
 status: draft
-summary: Podman/Quadlet、单镜像多容器 pod、卷、端口、证书挂载、GHCR 发布和运维 wiki。
+summary: Podman/Quadlet、单镜像多容器 pod、卷、端口、证书挂载、镜像构建和运维说明。
 interfaces:
   - Podman pod/Quadlet；镜像构建/发布
 dependencies: 全部模块的运维事实
 docs: docs/index.md
 history: history/index.md
 wiki: wiki/index.md
-tests: []
+tests:
+  - bin/moyu
+  - container/Containerfile
+  - quadlet

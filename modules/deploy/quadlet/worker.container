@@ -1,0 +1,20 @@
+[Unit]
+Description=moyu worker
+After=moyu-pod.service
+
+[Container]
+Image=${MOYU_IMAGE}
+ContainerName=moyu-worker
+Pod=moyu.pod
+Exec=moyu worker
+Environment=MOYU_CONFIG_DIR=/config
+Volume=${MOYU_CONFIG_DIR}:/config:ro,Z
+Volume=${MOYU_DATA_DIR}:/data:Z
+DropCapability=ALL
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

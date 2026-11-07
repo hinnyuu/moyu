@@ -1,0 +1,7 @@
+[Unit]
+Description=moyu pod
+After=network-online.target
+
+[Pod]
+PodName=moyu
+PublishPort=${MOYU_PUBLIC_PORT}:${MOYU_GATEWAY_PORT}

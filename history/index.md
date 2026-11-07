@@ -24,6 +24,7 @@
 - [2026-11-06 API 增加 tus 兼容分片端点](commits/2026-11-06-api-chunk-endpoint.md)
 - [2026-11-06 web 阶段 2 最小实现](commits/2026-11-06-web-implementation.md)
 - [2026-11-06 gateway 阶段 2 最小实现](commits/2026-11-06-gateway-implementation.md)
+- [2026-11-06 deploy 阶段 2 最小实现](commits/2026-11-06-deploy-implementation.md)
 
 ## 决策记录（ADR）
 

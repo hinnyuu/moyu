@@ -1,0 +1,25 @@
+[Unit]
+Description=moyu api
+After=moyu-pod.service
+
+[Container]
+Image=${MOYU_IMAGE}
+ContainerName=moyu-api
+Pod=moyu.pod
+Exec=moyu api
+Environment=MOYU_CONFIG_DIR=/config
+Environment=MOYU_API_LISTEN=0.0.0.0:${MOYU_API_PORT}
+Environment=MOYU_BOOTSTRAP_TOKEN_FILE=/run/secrets/bootstrap_token
+Environment=MOYU_SESSION_STATE_FILE=/config/secrets/session-state.json
+Environment=MOYU_SESSION_SECRET_FILE=/config/secrets/session.secret
+Volume=${MOYU_CONFIG_DIR}:/config:Z
+Volume=${MOYU_DATA_DIR}:/data:Z
+Volume=${MOYU_SECRETS_DIR}:/run/secrets:ro,Z
+DropCapability=ALL
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target
