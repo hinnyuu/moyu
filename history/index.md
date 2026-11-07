@@ -29,6 +29,7 @@
 - [2026-11-06 CI 接入进程级 E2E](commits/2026-11-06-ci-process-e2e.md)
 - [2026-11-06 只读配置与 Podman smoke CI](commits/2026-11-06-readonly-config-podman-ci.md)
 - [2026-11-06 wasm-client 阶段 2 最小实现](commits/2026-11-06-wasm-client-implementation.md)
+- [2026-11-06 发布前文档状态第一轮校对](commits/2026-11-06-docs-status-audit.md)
 
 ## 决策记录（ADR）
 

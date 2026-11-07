@@ -6,3 +6,4 @@
 - [2026-11-06 Rust workspace 骨架](2026-11-06-wasm-client-phase0.md)
 - [2026-11-06 wasm-client 骨架格式化](2026-11-06-wasm-client-fmt.md)
 - [2026-11-06 阶段 2 最小实现](2026-11-06-wasm-client-implementation.md)
+- [2026-11-06 文档状态校对](2026-11-06-doc-status.md)

@@ -1,6 +1,6 @@
 # moyu Agent 维护规则
 
-本仓库从 `v0.0.1` 开始按“便于 agent 长期维护”的方式组织。当前分支是 `draft/v0.0.1-architecture`，只包含架构、规划、契约和 wiki 草稿，不包含新业务实现。
+本仓库从 `v0.0.1` 开始按“便于 agent 长期维护”的方式组织。架构已合并到 `main`，业务实现也在 `main` 持续提交；`draft/v0.0.1-architecture` 只保留历史草稿。
 
 ## 阅读顺序
 
@@ -74,9 +74,9 @@
 
 ## 版本与分支
 
-- 架构冻结前不打 `v0.0.1` 标签。
-- 架构草稿在 `draft/v0.0.1-architecture` 分支。
-- 合并到 `main` 后再开始业务实现；实现完成、端到端验收通过后才创建 `v0.0.1` release。
+- 实现直接在 `main` 提交；`draft/v0.0.1-architecture` 只保留历史草稿。
+- 计划功能补齐、文档/wiki 全量校对、端到端验收通过后才创建 `v0.0.1` release。
+- `module.yaml` 的 `status: draft` 表示“尚未发布 v0.0.1”，不代表模块没有实现。
 
 ## 门禁命令
 

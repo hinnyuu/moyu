@@ -2,8 +2,6 @@
 
 把已经完成、但还没提交的渲染序列“重新出炉”的工具。
 
-当前分支：`draft/v0.0.1-architecture`。这是 **v0.0.1 的架构草稿分支**，只包含文档、规划、契约和 wiki，不包含新的业务实现。旧原型的代码保留在 `main` 的提交历史中，新架构不会直接复用旧结构。
-
 ## 项目目标
 
 - 以**交付 ZIP**为核心：ZIP 内部记录调整后的 DOS mtime，解压后由新 inode 自然重置 ctime/btime。
@@ -52,8 +50,9 @@ wiki/
 
 ## 当前状态
 
-- 架构、模块边界、配置策略、部署形态已进入草稿冻结阶段。
-- 业务代码尚未在新架构下实现。
+- `main` 已包含 v0.0.1 阶段实现：core-time、media-metadata、archive-zip、pipeline、config、storage、uploads、preview、worker、api、web、gateway、deploy、wasm-client 核心、agent-gate。
+- 已验证：Python 单元测试、Rust 测试/clippy/wasm target、进程级 E2E、amd64 Podman smoke、Web typecheck/build。
+- 仍在补齐：preview/tusd 独立容器、视频/EXR 预览、Web 批量/断点/WASM 接入、config 迁移与审计、gateway token 管理、GHCR 发布。
 - 尚未创建 `v0.0.1` 标签或 release。
 
 ## License
