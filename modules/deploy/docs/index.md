@@ -89,7 +89,7 @@ python3 modules/deploy/scripts/process_e2e.py
 
 当前沙箱结果：PASS（任务成功，ZIP 1 个条目，manifest sha256 匹配，源资产未被修改）。这条流程也已接入 `python` CI。
 
-真实后端浏览器 E2E：`modules/deploy/scripts/fullstack_e2e.sh`，由 `fullstack` workflow 启动 api/worker + 构建后的 Web，再用 Playwright 完成登录、上传、建任务与任务成功检查。
+真实后端浏览器 E2E：`modules/deploy/scripts/fullstack_e2e.sh`，由 `fullstack` workflow 启动 api/worker + 构建后的 Web，再用 Playwright 完成登录、上传、建任务与任务成功检查；CI 有 ffmpeg 时还会生成 1 秒 MP4 并验证 ffmpeg.wasm 本地视频转码。
 
 ## API 重启续传 E2E
 

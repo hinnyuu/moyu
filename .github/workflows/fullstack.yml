@@ -18,6 +18,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python3 -m pip install pyyaml jsonschema pillow fastapi httpx uvicorn
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

@@ -21,3 +21,4 @@
 - [2026-11-06 token 审计库路径](2026-11-06-token-db.md)
 - [2026-11-06 修复 smoke 容器检查](2026-11-06-fix-smoke-check.md)
 - [2026-11-06 多架构发布](2026-11-06-multiarch-release.md)
+- [2026-11-06 fullstack 视频测试](2026-11-06-video-e2e.md)

@@ -36,7 +36,7 @@
 
 ## 5. 已知未完成项（发布时必须在 Release notes 说明）
 
-- 视频转码成功路径尚未纳入自动化；客户端 ZIP 只写 DOS mtime。
+- 客户端 ZIP 只写 DOS mtime；视频转码成功路径已纳入 fullstack E2E（CI 生成 1 秒 MP4）。
 - 发布镜像构建 amd64 + arm64 多架构 manifest；arm64 由 `podman-arm64` workflow 验证。
 - Playwright 已覆盖前端 mock E2E、真实 api/worker 流程与登录/任务页 WCAG AA（亮/暗）；明暗主题截图基线未接入。
 - 更多故障注入测试未接入；>4GiB、>65535 条目与服务重启续传已覆盖。

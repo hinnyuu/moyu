@@ -63,6 +63,7 @@
 - [2026-11-06 修复 Podman smoke 误报容器未运行](commits/2026-11-06-fix-podman-smoke-check.md)
 - [2026-11-06 cargo-deny / cargo-audit 接入](commits/2026-11-06-cargo-deny-audit.md)
 - [2026-11-06 多架构镜像发布](commits/2026-11-06-multiarch-release.md)
+- [2026-11-06 真实视频转码 E2E](commits/2026-11-06-video-transcode-e2e.md)
 
 ## 决策记录（ADR）
 

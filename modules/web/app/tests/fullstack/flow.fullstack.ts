@@ -3,6 +3,29 @@ import { expect, test } from "@playwright/test";
 const password = process.env.MOYU_E2E_PASSWORD || "e2e-secret-pass";
 const bootstrap = process.env.MOYU_E2E_BOOTSTRAP || "e2e-boot-token";
 
+async function login(page: import("@playwright/test").Page) {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "moyu" })).toBeVisible();
+  if (await page.locator("#bootstrap").count()) {
+    await page.locator("#bootstrap").fill(bootstrap);
+  }
+  await page.locator("#password").fill(password);
+  await page.getByRole("button", { name: /登录|初始化并登录/ }).click();
+  await expect(page.getByRole("button", { name: "任务", exact: true })).toBeVisible();
+}
+
+test("real video transcode", async ({ page }) => {
+  const video = process.env.MOYU_E2E_VIDEO;
+  test.skip(!video, "未提供 MOYU_E2E_VIDEO");
+  test.setTimeout(240_000);
+  await login(page);
+  await page.getByRole("button", { name: "上传", exact: true }).click();
+  await page.locator("input[type=file]").setInputFiles(video as string);
+  await expect(page.locator("tbody")).toContainText("clip.mp4");
+  await page.getByRole("button", { name: "本地视频转码" }).click();
+  await expect(page.locator('video[src^="blob:"]')).toBeVisible({ timeout: 180_000 });
+});
+
 test("real backend upload, pack and theme", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(String(error)));

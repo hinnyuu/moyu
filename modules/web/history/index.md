@@ -18,3 +18,4 @@
 - [2026-11-06 WASM 本地预览转码](2026-11-06-wasm-transcode.md)
 - [2026-11-06 ffmpeg.wasm 视频转码](2026-11-06-ffmpeg-wasm.md)
 - [2026-11-06 文档四轮校对](2026-11-06-docs-audit-round4.md)
+- [2026-11-06 视频转码 E2E](2026-11-06-video-e2e.md)

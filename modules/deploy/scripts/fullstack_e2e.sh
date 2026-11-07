@@ -55,6 +55,12 @@ for _ in $(seq 1 60); do
 done
 [ "${code:-}" = "200" ] || { echo "API 未启动"; exit 1; }
 
+if command -v ffmpeg >/dev/null 2>&1; then
+  ffmpeg -y -v error -f lavfi -i "testsrc=size=160x90:rate=10" -t 1 \
+    -pix_fmt yuv420p "$TMP/clip.mp4"
+  export MOYU_E2E_VIDEO="$TMP/clip.mp4"
+fi
+
 cd "$ROOT/modules/web/app"
 MOYU_E2E_BASE_URL="http://127.0.0.1:$PORT" \
 MOYU_E2E_BOOTSTRAP=e2e-boot-token \

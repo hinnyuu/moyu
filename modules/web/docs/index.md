@@ -95,7 +95,7 @@ npm run build
 - `npm run build` 通过；
 - `npm test`（Vitest）4 个队列测试：新建上传、断点续传、暂停、错误传播；
 - `npm run test:e2e`（Playwright）4 个前端 mock E2E：登录、WCAG AA（登录/任务页亮暗两套）、主题持久化、队列刷新恢复。
-- `modules/deploy/scripts/fullstack_e2e.sh`：真实 api/worker + 构建后 Web 的 Playwright 流程（登录、上传、建任务、任务成功、主题）。
+- `modules/deploy/scripts/fullstack_e2e.sh`：真实 api/worker + 构建后 Web 的 Playwright 流程（登录、上传、建任务、任务成功、主题、可选视频转码）。
 - 构建产物由 API 静态挂载后可访问（首页、JS、CSS 均为 200）。
 
 尚未完成：
