@@ -40,6 +40,7 @@
 - [2026-11-06 GHCR 发布与供应链报告](commits/2026-11-06-release-supply-chain.md)
 - [2026-11-06 发布前文档二轮校对与发布清单](commits/2026-11-06-docs-audit-release-checklist.md)
 - [2026-11-06 HLS 预览](commits/2026-11-06-hls-preview.md)
+- [2026-11-06 Playwright 前端 E2E](commits/2026-11-06-playwright-e2e.md)
 
 ## 决策记录（ADR）
 

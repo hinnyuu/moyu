@@ -7,4 +7,5 @@ node_modules/
 modules/web/app/dist/
 *.tsbuildinfo
 modules/web/app/public/wasm/
-
+modules/web/app/test-results/
+modules/web/app/playwright-report/

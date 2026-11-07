@@ -90,11 +90,12 @@ npm run build
 - `npm run typecheck` 通过；
 - `npm run build` 通过；
 - `npm test`（Vitest）4 个队列测试：新建上传、断点续传、暂停、错误传播；
+- `npm run test:e2e`（Playwright）3 个前端 mock E2E：登录、主题持久化、队列刷新恢复。
 - 构建产物由 API 静态挂载后可访问（首页、JS、CSS 均为 200）。
 
 尚未完成：
 
-- Playwright 浏览器 E2E（当前沙箱 Chromium 下载受限）；
+- 真实后端联动的 Playwright、明暗主题截图基线与对比度自动检查；
 - 亮/暗主题视觉回归截图基线；
 - Playwright 浏览器 E2E；WASM 产物由镜像构建，不在仓库提交。
 
