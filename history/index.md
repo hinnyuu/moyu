@@ -68,6 +68,7 @@
 - [2026-11-06 主题截图基线脚手架](commits/2026-11-06-visual-baseline-scaffold.md)
 - [2026-11-06 修复截图基线生成与视频 E2E 诊断](commits/2026-11-06-fix-visual-baseline-run.md)
 - [2026-11-06 截图基线生成诊断](commits/2026-11-06-visual-baseline-diagnostics.md)
+- [2026-11-06 截图基线失败日志落盘](commits/2026-11-06-visual-baseline-log-commit.md)
 
 ## 决策记录（ADR）
 
