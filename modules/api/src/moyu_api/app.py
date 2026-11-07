@@ -23,6 +23,7 @@ from moyu_uploads import UploadError, UploadSessionStore
 from .auth import AuthError, AuthManager
 from .gateway_admin import GatewayAdminClient, GatewayAdminError
 from .preview_client import PreviewClient, PreviewClientError
+from .rate_limit import LoginRateLimiter
 
 ERROR_STATUS = {
     "auth_required": 401,
@@ -56,6 +57,13 @@ ERROR_STATUS = {
     "gateway_unreachable": 502,
     "gateway_admin_error": 502,
     "reload_failed": 502,
+    "rate_limited": 429,
+    "forbidden": 403,
+    "user_exists": 409,
+    "user_not_found": 404,
+    "last_admin": 409,
+    "username_invalid": 400,
+    "role_invalid": 400,
     "preview_unreachable": 502,
     "preview_service_error": 502,
     "preview_failed": 502,
@@ -105,7 +113,10 @@ def create_app(
     gateway_admin=None,
     preview_client=None,
     tusd_hook_token=None,
+    login_limiter=None,
 ):
+    if login_limiter is None:
+        login_limiter = LoginRateLimiter()
     effective = config_provider.load()
     api_config = effective.modules["api"]
     uploads_config = effective.modules["uploads"]
@@ -160,6 +171,7 @@ def create_app(
     app.state.gateway_admin = gateway_admin
     app.state.preview_client = preview_client
     app.state.tusd_hook_token = tusd_hook_token
+    app.state.login_limiter = login_limiter
 
     def current_session(request: Request):
         token = request.cookies.get(auth.cookie_name)
@@ -253,14 +265,45 @@ def create_app(
     async def health():
         return {"status": "ok", "configured": auth.is_configured()}
 
+    def login_key(request: Request):
+        return getattr(request.client, "host", "unknown") or "unknown"
+
     @app.post("/api/v1/auth/session", status_code=204)
     async def login(request: Request, response: Response):
+        key = login_key(request)
+        if not login_limiter.allow(key):
+            raise _http(429, "rate_limited", "登录尝试过多，请稍后再试")
         body = await _json_body(request)
         password = body.get("password")
-        if not auth.is_configured():
-            session = auth.setup(body.get("bootstrap_token"), password)
-        else:
-            session = auth.login(password)
+        try:
+            if not auth.is_configured():
+                session = auth.setup(
+                    body.get("bootstrap_token"), password, body.get("username", "admin")
+                )
+            else:
+                session = auth.login(password, body.get("username", "admin"))
+        except AuthError:
+            login_limiter.failure(key)
+            raise
+        login_limiter.success(key)
+        auth.set_cookies(response, session)
+
+    @app.post("/api/v1/auth/password/reset", status_code=204)
+    async def reset_password(request: Request, response: Response):
+        key = login_key(request)
+        if not login_limiter.allow(key):
+            raise _http(429, "rate_limited", "登录尝试过多，请稍后再试")
+        body = await _json_body(request)
+        try:
+            session = auth.reset_password(
+                body.get("bootstrap_token"),
+                body.get("password"),
+                body.get("username", "admin"),
+            )
+        except AuthError:
+            login_limiter.failure(key)
+            raise
+        login_limiter.success(key)
         auth.set_cookies(response, session)
 
     @app.get("/api/v1/auth/session")
@@ -275,6 +318,48 @@ def create_app(
     ):
         require_csrf(request, session)
         auth.clear_cookies(response)
+
+    def require_admin(session):
+        if session.role != "admin":
+            raise _http(403, "forbidden", "需要管理员权限")
+
+    @app.get("/api/v1/users")
+    async def list_users(session=Depends(current_session)):
+        require_admin(session)
+        return auth.list_users()
+
+    @app.post("/api/v1/users", status_code=201)
+    async def create_user(request: Request, session=Depends(current_session)):
+        require_csrf(request, session)
+        require_admin(session)
+        body = await _json_body(request)
+        return auth.create_user(
+            session.username,
+            body.get("username"),
+            body.get("password"),
+            body.get("role", "operator"),
+        )
+
+    @app.delete("/api/v1/users/{username}", status_code=204)
+    async def delete_user(
+        username: str, request: Request, session=Depends(current_session)
+    ):
+        require_csrf(request, session)
+        require_admin(session)
+        auth.delete_user(session.username, username)
+
+    @app.post("/api/v1/users/{username}/password", status_code=204)
+    async def change_password(
+        username: str, request: Request, session=Depends(current_session)
+    ):
+        require_csrf(request, session)
+        body = await _json_body(request)
+        auth.change_password(
+            session.username,
+            username,
+            body.get("password"),
+            body.get("old_password"),
+        )
 
     @app.get("/api/v1/config")
     async def read_config(session=Depends(current_session)):

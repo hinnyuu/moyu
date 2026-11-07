@@ -1,11 +1,10 @@
-"""Session authentication for the API.
+"""Session authentication, users, password reset and CSRF.
 
 Design:
-
-- bootstrap token file enables first-run setup;
-- admin password is stored as PBKDF2-HMAC-SHA256;
-- session cookie is a signed JSON payload (HMAC-SHA256);
-- a CSRF token is bound to the signed payload and mirrored in a readable cookie.
+- bootstrap token enables first-run setup and password reset;
+- passwords use PBKDF2-HMAC-SHA256;
+- session cookie is a signed JSON payload (HMAC-SHA256) with role;
+- CSRF token is bound to the signed payload and mirrored in a readable cookie.
 """
 
 import base64
@@ -14,6 +13,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import tempfile
 from dataclasses import dataclass
@@ -22,6 +22,8 @@ from pathlib import Path
 PBKDF2_ITERATIONS = 210_000
 PASSWORD_MIN_LENGTH = 8
 SESSION_VERSION = 1
+USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,32}$")
+ROLES = {"admin", "operator"}
 
 
 class AuthError(Exception):
@@ -38,6 +40,7 @@ class AuthError(Exception):
 @dataclass
 class Session:
     username: str
+    role: str
     csrf: str
     issued_at: int
     expires_at: int
@@ -45,6 +48,7 @@ class Session:
     def to_dict(self):
         return {
             "username": self.username,
+            "role": self.role,
             "csrf": self.csrf,
             "issued_at": self.issued_at,
             "expires_at": self.expires_at,
@@ -103,9 +107,14 @@ class AuthManager:
         if not self.state_file.exists():
             return {}
         try:
-            return json.loads(self.state_file.read_text(encoding="utf-8"))
+            state = json.loads(self.state_file.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             raise AuthError("state_invalid", f"认证状态文件损坏: {exc}") from exc
+        if "users" not in state and "admin" in state:
+            admin = dict(state["admin"])
+            admin.setdefault("role", "admin")
+            state["users"] = {"admin": admin}
+        return state
 
     def _write_state(self, state):
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
@@ -129,8 +138,12 @@ class AuthManager:
                 except OSError:
                     pass
 
+    def _users(self, state=None):
+        state = self._read_state() if state is None else state
+        return state.get("users") or {}
+
     def is_configured(self):
-        return bool(self._read_state().get("admin"))
+        return bool(self._users())
 
     def _bootstrap_token(self):
         try:
@@ -138,37 +151,135 @@ class AuthManager:
         except OSError as exc:
             raise AuthError("bootstrap_missing", f"无法读取 bootstrap token: {exc}") from exc
 
-    def setup(self, bootstrap_token, password):
-        if self.is_configured():
-            raise AuthError("already_configured", "管理员已初始化")
+    def _verify_bootstrap(self, token):
+        expected = self._bootstrap_token()
+        if not expected or not hmac.compare_digest(str(token), expected):
+            raise AuthError("bootstrap_invalid", "bootstrap token 不正确")
+
+    def _validate_password(self, password):
         if not isinstance(password, str) or len(password) < PASSWORD_MIN_LENGTH:
             raise AuthError(
                 "password_invalid", f"密码至少 {PASSWORD_MIN_LENGTH} 个字符"
             )
-        expected = self._bootstrap_token()
-        if not expected or not hmac.compare_digest(str(bootstrap_token), expected):
-            raise AuthError("bootstrap_invalid", "bootstrap token 不正确")
+
+    def setup(self, bootstrap_token, password, username="admin"):
+        if self.is_configured():
+            raise AuthError("already_configured", "管理员已初始化")
+        self._validate_password(password)
+        self._verify_bootstrap(bootstrap_token)
+        if not USERNAME_RE.match(str(username)):
+            raise AuthError("username_invalid", "用户名只能是 1-32 位字母数字._-")
         now = dt.datetime.now(dt.timezone.utc).isoformat()
         self._write_state(
             {
                 "version": SESSION_VERSION,
-                "admin": {
-                    "username": "admin",
-                    "password": hash_password(password),
-                    "created_at": now,
+                "users": {
+                    username: {
+                        "username": username,
+                        "password": hash_password(password),
+                        "role": "admin",
+                        "created_at": now,
+                    }
                 },
             }
         )
-        return self._issue("admin")
+        return self._issue(username, "admin")
 
-    def login(self, password):
-        state = self._read_state()
-        admin = state.get("admin")
-        if not admin:
+    def login(self, password, username="admin"):
+        users = self._users()
+        if not users:
             raise AuthError("not_configured", "管理员尚未初始化")
-        if not verify_password(str(password), admin.get("password", "")):
+        user = users.get(str(username))
+        if user is None:
             raise AuthError("password_mismatch", "用户名或密码不正确")
-        return self._issue(admin.get("username", "admin"))
+        if not verify_password(str(password), user.get("password", "")):
+            raise AuthError("password_mismatch", "用户名或密码不正确")
+        return self._issue(user.get("username", username), user.get("role", "operator"))
+
+    def reset_password(self, bootstrap_token, password, username="admin"):
+        self._validate_password(password)
+        self._verify_bootstrap(bootstrap_token)
+        state = self._read_state()
+        users = state.setdefault("users", {})
+        now = dt.datetime.now(dt.timezone.utc).isoformat()
+        user = users.get(username)
+        if user is None:
+            user = {
+                "username": username,
+                "role": "admin",
+                "created_at": now,
+            }
+            users[username] = user
+        user["password"] = hash_password(password)
+        self._write_state(state)
+        return self._issue(username, user.get("role", "admin"))
+
+    def list_users(self):
+        return [
+            {
+                "username": name,
+                "role": user.get("role", "operator"),
+                "created_at": user.get("created_at"),
+            }
+            for name, user in sorted(self._users().items())
+        ]
+
+    def _require_admin(self, actor):
+        user = self._users().get(actor)
+        if user is None or user.get("role") != "admin":
+            raise AuthError("forbidden", "需要管理员权限")
+
+    def create_user(self, actor, username, password, role="operator"):
+        self._require_admin(actor)
+        if not USERNAME_RE.match(str(username)):
+            raise AuthError("username_invalid", "用户名只能是 1-32 位字母数字._-")
+        if role not in ROLES:
+            raise AuthError("role_invalid", "角色只能是 admin/operator")
+        self._validate_password(password)
+        state = self._read_state()
+        users = state.setdefault("users", {})
+        if username in users:
+            raise AuthError("user_exists", "用户已存在")
+        users[username] = {
+            "username": username,
+            "password": hash_password(password),
+            "role": role,
+            "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        }
+        self._write_state(state)
+        return {"username": username, "role": role}
+
+    def delete_user(self, actor, username):
+        self._require_admin(actor)
+        if username == actor:
+            raise AuthError("forbidden", "不能删除当前登录用户")
+        state = self._read_state()
+        users = state.setdefault("users", {})
+        user = users.get(username)
+        if user is None:
+            raise AuthError("user_not_found", "用户不存在")
+        admins = [item for item in users.values() if item.get("role") == "admin"]
+        if user.get("role") == "admin" and len(admins) <= 1:
+            raise AuthError("last_admin", "不能删除最后一个管理员")
+        del users[username]
+        self._write_state(state)
+
+    def change_password(self, actor, username, new_password, old_password=None):
+        self._validate_password(new_password)
+        users = self._users()
+        user = users.get(username)
+        if user is None:
+            raise AuthError("user_not_found", "用户不存在")
+        if actor != username:
+            self._require_admin(actor)
+        elif old_password is not None:
+            if not verify_password(str(old_password), user.get("password", "")):
+                raise AuthError("password_mismatch", "原密码不正确")
+        else:
+            raise AuthError("password_mismatch", "修改自己的密码需要原密码")
+        state = self._read_state()
+        state["users"][username]["password"] = hash_password(new_password)
+        self._write_state(state)
 
     def _secret(self):
         try:
@@ -191,10 +302,11 @@ class AuthManager:
             raise AuthError("secret_write_failed", f"无法生成会话密钥: {exc}") from exc
         return secret
 
-    def _issue(self, username):
+    def _issue(self, username, role):
         now = int(dt.datetime.now(dt.timezone.utc).timestamp())
         return Session(
             username=username,
+            role=role,
             csrf=_b64(secrets.token_bytes(24)),
             issued_at=now,
             expires_at=now + self.ttl_seconds,
@@ -204,6 +316,7 @@ class AuthManager:
         payload = {
             "v": SESSION_VERSION,
             "sub": session.username,
+            "role": session.role,
             "csrf": session.csrf,
             "iat": session.issued_at,
             "exp": session.expires_at,
@@ -234,6 +347,7 @@ class AuthManager:
             raise AuthError("session_expired", "会话已过期")
         return Session(
             username=str(payload.get("sub")),
+            role=str(payload.get("role", "admin")),
             csrf=str(payload.get("csrf")),
             issued_at=int(payload.get("iat", 0)),
             expires_at=int(payload.get("exp", 0)),
@@ -245,7 +359,9 @@ class AuthManager:
         return True
 
     def set_cookies(self, response, session):
-        max_age = max(0, session.expires_at - int(dt.datetime.now(dt.timezone.utc).timestamp()))
+        max_age = max(
+            0, session.expires_at - int(dt.datetime.now(dt.timezone.utc).timestamp())
+        )
         response.set_cookie(
             self.cookie_name,
             self.sign_session(session),

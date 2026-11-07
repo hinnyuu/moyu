@@ -32,7 +32,7 @@ contracts, pipeline, storage, uploads, preview, config
 4. 会话 cookie 是 HMAC-SHA256 签名的 JSON（`sub/csrf/iat/exp`），HttpOnly、SameSite=Lax；
 5. CSRF token 同时写入可读 cookie `moyu_csrf`，写操作要求 `X-CSRF-Token` 与签名会话中的值一致。
 
-单管理员、无找回流程、无速率限制；TLS 模式下应设置 `cookie_secure=True`。
+支持多用户与 admin/operator 角色；登录失败有内存速率限制（默认 5 次/5 分钟/IP）；bootstrap token 可重置 admin 密码；TLS 模式下应设置 `cookie_secure=True`。
 
 ## 接口
 
@@ -41,6 +41,8 @@ contracts, pipeline, storage, uploads, preview, config
 `create_app(storage, config_provider, auth) -> FastAPI`，挂载：
 
 - `GET /api/v1/health`
+- `GET /api/v1/users`、`POST /api/v1/users`、`DELETE /api/v1/users/{username}`、`POST /api/v1/users/{username}/password`
+- `POST /api/v1/auth/password/reset`
 - `POST/GET/DELETE /api/v1/auth/session`
 - `GET /api/v1/config`、`GET /api/v1/config/audit`、`GET/PUT /api/v1/config/{module}`
 - `POST /api/v1/uploads`、`GET/PATCH /api/v1/uploads/{id}`、`POST /api/v1/uploads/{id}/finish`
@@ -78,7 +80,7 @@ contracts, pipeline, storage, uploads, preview, config
 
 `tests/test_auth.py`（7 个）：密码哈希、初始化、登录、错误 token/密码、签名篡改、过期、CSRF、文件权限。
 
-`tests/test_api.py`（8 个）：健康检查与认证、配置读写与 audit、上传/下载/预览、任务 + worker、取消与 404、网关管理代理与 token、tusd hook、请求体上限。`tests/test_gateway_admin.py`（4 个）：网关管理客户端/token/不可达；`tests/test_preview_client.py`（3 个）：预览服务客户端/错误/不可达。
+`tests/test_api.py`（10 个）：健康检查与认证、配置读写与 audit、上传/下载/预览、任务 + worker、取消与 404、网关管理代理与 token、tusd hook、请求体上限。`tests/test_gateway_admin.py`（4 个）：网关管理客户端/token/不可达；`tests/test_preview_client.py`（3 个）：预览服务客户端/错误/不可达。
 
 运行：
 

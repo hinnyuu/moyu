@@ -392,6 +392,79 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(asset.original_name, "tusd.bin")
         self.assertFalse(source.exists())
 
+    def test_login_rate_limit(self):
+        for _ in range(5):
+            response = self.client.post(
+                "/api/v1/auth/session",
+                json={"bootstrap_token": "wrong", "password": "secret-pass"},
+            )
+            self.assertEqual(response.status_code, 401)
+        blocked = self.client.post(
+            "/api/v1/auth/session",
+            json={"bootstrap_token": BOOTSTRAP, "password": PASSWORD},
+        )
+        self.assertEqual(blocked.status_code, 429)
+        self.assertEqual(blocked.json()["code"], "rate_limited")
+
+    def test_user_management_and_password_reset(self):
+        csrf = self.login()
+        headers = self.csrf_headers(csrf)
+
+        created = self.client.post(
+            "/api/v1/users",
+            json={
+                "username": "operator1",
+                "password": "operator-pass",
+                "role": "operator",
+            },
+            headers=headers,
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        users = self.client.get("/api/v1/users").json()
+        self.assertIn("operator1", [item["username"] for item in users])
+
+        operator = TestClient(self.app)
+        logged = operator.post(
+            "/api/v1/auth/session",
+            json={"username": "operator1", "password": "operator-pass"},
+        )
+        self.assertEqual(logged.status_code, 204, logged.text)
+        forbidden = operator.get("/api/v1/users")
+        self.assertEqual(forbidden.status_code, 403)
+
+        reset = self.client.post(
+            "/api/v1/users/operator1/password",
+            json={"password": "operator-reset"},
+            headers=headers,
+        )
+        self.assertEqual(reset.status_code, 204, reset.text)
+        operator2 = TestClient(self.app)
+        self.assertEqual(
+            operator2.post(
+                "/api/v1/auth/session",
+                json={"username": "operator1", "password": "operator-reset"},
+            ).status_code,
+            204,
+        )
+
+        bootstrap_reset = TestClient(self.app).post(
+            "/api/v1/auth/password/reset",
+            json={"bootstrap_token": BOOTSTRAP, "password": "reset-pass"},
+        )
+        self.assertEqual(bootstrap_reset.status_code, 204, bootstrap_reset.text)
+        admin2 = TestClient(self.app)
+        self.assertEqual(
+            admin2.post(
+                "/api/v1/auth/session", json={"password": "reset-pass"}
+            ).status_code,
+            204,
+        )
+
+        deleted = self.client.delete(
+            "/api/v1/users/operator1", headers=headers
+        )
+        self.assertEqual(deleted.status_code, 204, deleted.text)
+
     def test_request_size_limit(self):
         csrf = self.login()
         body = b"x" * (1024 * 1024 + 1)

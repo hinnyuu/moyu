@@ -17,6 +17,15 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/auth/password/reset:
+    post:
+      summary: 使用 bootstrap token 重置密码
+      security: []
+      responses:
+        "204":
+          description: 已重置并建立会话
+        "429":
+          description: 尝试过多
   /api/v1/auth/session:
     post:
       summary: 登录并建立会话
@@ -174,6 +183,45 @@ paths:
       responses:
         "200":
           description: 预览文件
+  /api/v1/users:
+    get:
+      summary: 列出用户
+      responses:
+        "200":
+          description: 用户列表
+        "403":
+          description: 需要管理员
+    post:
+      summary: 创建用户
+      responses:
+        "201":
+          description: 已创建
+  /api/v1/users/{username}:
+    parameters:
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      summary: 删除用户
+      responses:
+        "204":
+          description: 已删除
+        "409":
+          description: 最后一个管理员
+  /api/v1/users/{username}/password:
+    parameters:
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      summary: 修改密码（管理员重置或本人凭原密码）
+      responses:
+        "204":
+          description: 已修改
   /api/v1/config:
     get:
       summary: 读取 effective config
