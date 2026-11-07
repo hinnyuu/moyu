@@ -12,6 +12,7 @@ import {
 } from "../queue";
 import type { QueueItem } from "../queue";
 import { formatError } from "./Login";
+import { HlsPreview } from "../components/HlsPreview";
 import { packLocally, wasmCapabilities } from "../wasm";
 
 function defaultTarget(): string {
@@ -367,6 +368,7 @@ export function UploadPage() {
                   </a>
                 )}
               </div>
+              {selected && <HlsPreview assetId={selected} />}
               {job && (
                 <div className="success">
                   任务 {job.id.slice(0, 12)} 已创建，状态 {job.status}。

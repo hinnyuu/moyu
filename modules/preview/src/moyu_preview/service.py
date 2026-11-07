@@ -12,6 +12,7 @@ MEDIA_TYPES = {
     "png": "image/png",
     "webp": "image/webp",
     "mp4": "video/mp4",
+    "hls": "application/vnd.apple.mpegurl",
 }
 
 
@@ -30,7 +31,11 @@ def create_preview_app(storage, preview_config, provider=None):
 
     @app.exception_handler(PreviewError)
     async def preview_error(_request, exc):
-        status = 404 if exc.code in ("asset_not_found", "profile_unknown") else 415
+        status = 404 if exc.code in (
+            "asset_not_found",
+            "profile_unknown",
+            "preview_not_found",
+        ) else 415
         if exc.code in ("preview_timeout", "preview_busy"):
             status = 503
         return JSONResponse(
@@ -64,6 +69,23 @@ def create_preview_app(storage, preview_config, provider=None):
             media_type=MEDIA_TYPES.get(artifact.format, "application/octet-stream"),
             filename=f"preview.{artifact.format}",
         )
+
+    @app.get("/preview/{asset_id}/{profile}/{filename}")
+    async def preview_file(asset_id: str, profile: str, filename: str):
+        if filename in (".", "..") or "/" in filename or "\\" in filename:
+            raise PreviewError("preview_not_found", "非法预览文件")
+        playlist = provider.preview_path(asset_id, profile)
+        base = playlist.parent.resolve()
+        target = (base / filename).resolve()
+        if target.parent != base or not target.is_file():
+            raise PreviewError("preview_not_found", "预览文件不存在")
+        if target.suffix == ".m3u8":
+            media = MEDIA_TYPES["hls"]
+        elif target.suffix == ".ts":
+            media = "video/mp2t"
+        else:
+            media = "application/octet-stream"
+        return FileResponse(target, media_type=media, filename=filename)
 
     @app.post("/purge/{asset_id}", status_code=204)
     async def purge(asset_id: str):

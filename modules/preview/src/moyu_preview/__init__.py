@@ -30,6 +30,7 @@ DEFAULT_PROFILES = {
     "thumb": {"maxWidth": 256, "maxHeight": 256, "format": "webp", "quality": 80},
     "view": {"maxWidth": 1920, "maxHeight": 1920, "format": "jpeg", "quality": 85},
     "proxy": {"maxWidth": 1280, "maxHeight": 720, "format": "mp4", "quality": 23},
+    "hls": {"maxWidth": 1280, "maxHeight": 720, "format": "hls", "quality": 23},
 }
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp", ".avif", ".bmp", ".gif"}
 VIDEO_SUFFIXES = {".mp4", ".mov", ".mkv", ".webm"}
@@ -85,7 +86,7 @@ def _normalize_profile(profile):
         raise PreviewError("profile_invalid", "预览尺寸必须为正")
     if not 1 <= quality <= 100:
         raise PreviewError("profile_invalid", "quality 必须在 1-100")
-    if fmt not in ("jpeg", "png", "webp", "mp4"):
+    if fmt not in ("jpeg", "png", "webp", "mp4", "hls"):
         raise PreviewError("profile_invalid", f"不支持的预览格式: {fmt}")
     return {
         "maxWidth": width,
@@ -190,12 +191,14 @@ class PreviewProvider:
         name, normalized = self._resolve_profile(profile)
         asset = self._asset(asset_id)
         key = self._cache_key(asset, normalized)
+        if normalized["format"] == "hls":
+            return self.cache_dir / asset.id / key / "index.m3u8"
         return self.cache_dir / asset.id / key / f"preview.{normalized['format']}"
 
     def _artifact(self, asset_id, name, normalized, target, cached):
         fmt = normalized["format"]
         width = height = 0
-        if fmt != "mp4" and Image is not None:
+        if fmt not in ("mp4", "hls") and Image is not None:
             with Image.open(target) as image:
                 width, height = image.size
         return PreviewArtifact(
@@ -224,6 +227,8 @@ class PreviewProvider:
         target = self.preview_path(asset.id, normalized)
         if target.exists():
             return self._artifact(asset.id, name, normalized, target, True)
+        if normalized["format"] == "hls" and suffix in VIDEO_SUFFIXES:
+            return self._generate_hls(asset, name, normalized, target)
         if suffix in VIDEO_SUFFIXES:
             return self._generate_external(asset, name, normalized, target, "video")
         if suffix in EXR_SUFFIXES:
@@ -279,6 +284,24 @@ class PreviewProvider:
             if time.monotonic() - started > self.timeout_seconds:
                 target.unlink(missing_ok=True)
                 raise PreviewError("preview_timeout", "预览生成超时")
+            return self._artifact(asset.id, name, normalized, target, False)
+        finally:
+            self._semaphore.release()
+
+    def _generate_hls(self, asset, name, normalized, target):
+        if not self._semaphore.acquire(timeout=self.timeout_seconds):
+            raise PreviewError("preview_busy", "预览队列已满")
+        started = time.monotonic()
+        try:
+            try:
+                external.generate_hls(
+                    self.assets.path_for(asset.id), target, normalized, self.timeout_seconds
+                )
+            except external.ExternalError as exc:
+                raise PreviewError(exc.code, exc.message, exc.details) from exc
+            if time.monotonic() - started > self.timeout_seconds:
+                target.unlink(missing_ok=True)
+                raise PreviewError("preview_timeout", "HLS 生成超时")
             return self._artifact(asset.id, name, normalized, target, False)
         finally:
             self._semaphore.release()

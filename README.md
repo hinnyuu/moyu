@@ -52,7 +52,7 @@ wiki/
 
 - `main` 已包含 v0.0.1 阶段实现：core-time、media-metadata、archive-zip、pipeline、config、storage、uploads、preview、worker、api、web、gateway、deploy、wasm-client 核心、agent-gate。
 - 已验证：Python 单元测试、Rust 测试/clippy/wasm target、进程级 E2E、amd64 Podman smoke、Web typecheck/build。
-- 仍在补齐：首次 GHCR 发布验证、HLS、大文件/Playwright 测试与发布前全量校对；见 `docs/development/release-checklist.md`。
+- 仍在补齐：首次 GHCR 发布验证、大文件/Playwright 测试与发布前全量校对；见 `docs/development/release-checklist.md`。
 - 尚未创建 `v0.0.1` 标签或 release。
 
 ## License

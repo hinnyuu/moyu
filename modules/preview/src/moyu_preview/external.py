@@ -134,6 +134,54 @@ def generate_video(path, target, profile, timeout=60):
     return target
 
 
+def generate_hls(path, target, profile, timeout=120):
+    if not ffmpeg_available():
+        raise ExternalError("preview_unsupported", "ffmpeg 不可用")
+    width = profile["maxWidth"]
+    height = profile["maxHeight"]
+    quality = profile.get("quality", 23)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    segments = target.parent / "segment_%03d.ts"
+    command = [
+        "ffmpeg",
+        "-y",
+        "-v",
+        "error",
+        "-i",
+        str(path),
+        "-vf",
+        f"scale={width}:{height}:force_original_aspect_ratio=decrease",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        str(quality),
+        "-c:a",
+        "aac",
+        "-hls_time",
+        "6",
+        "-hls_playlist_type",
+        "vod",
+        "-hls_segment_filename",
+        str(segments),
+        str(target),
+    ]
+    try:
+        completed = subprocess.run(
+            command, capture_output=True, timeout=timeout, check=False
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ExternalError("preview_timeout", f"ffmpeg HLS 超时或失败: {exc}") from exc
+    if completed.returncode != 0:
+        raise ExternalError(
+            "preview_failed",
+            "ffmpeg 生成 HLS 失败",
+            [completed.stderr.decode("utf-8", "replace")[-500:]],
+        )
+    return target
+
+
 def probe_exr(path, timeout=20):
     if not oiiotool_available():
         return {"supported": False, "reason": "oiiotool 不可用", "type": "image"}

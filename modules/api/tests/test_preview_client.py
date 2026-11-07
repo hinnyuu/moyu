@@ -34,6 +34,13 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+        elif self.path == "/preview/a1/hls/index.m3u8":
+            body = b"#EXTM3U\nsegment_000.ts\n"
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.apple.mpegurl")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
         elif self.path == "/probe/a1":
             body = json.dumps({"supported": True}).encode("utf-8")
             self.send_response(200)
@@ -74,6 +81,9 @@ class PreviewClientTests(unittest.TestCase):
         self.assertEqual(body, b"preview-bytes")
         self.assertEqual(media, "image/webp")
         self.assertTrue(self.client.probe("a1")["supported"])
+        playlist, media = self.client.generate_file("a1", "hls", "index.m3u8")
+        self.assertIn(b"#EXTM3U", playlist)
+        self.assertEqual(media, "application/vnd.apple.mpegurl")
         self.client.purge("a1")
 
     def test_error_mapping(self):

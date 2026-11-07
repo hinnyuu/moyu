@@ -193,8 +193,7 @@ delete(asset_id) -> void
 
 `PreviewArtifact`：
 
-- 当前实现：Pillow 图片、ffmpeg 视频 poster/MP4 代理、oiiotool EXR；
-- 待实现：HLS；
+- 当前实现：Pillow 图片、ffmpeg 视频 poster/MP4 代理/HLS、oiiotool EXR；
 - 缓存键：`asset_sha256 + profile`；
 - 资源限制、超时、并发上限由 provider 配置。
 

@@ -54,5 +54,11 @@ class PreviewClient:
         body, content_type = self._request(f"/preview/{asset_id}/{profile}")
         return body, content_type
 
+    def generate_file(self, asset_id, profile, filename):
+        body, content_type = self._request(
+            f"/preview/{asset_id}/{profile}/{filename}"
+        )
+        return body, content_type
+
     def purge(self, asset_id):
         self._request(f"/purge/{asset_id}", method="POST")

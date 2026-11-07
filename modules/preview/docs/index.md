@@ -8,7 +8,7 @@
 
 默认服务端处理；缓存键=资产 sha256+profile；独立容器可限制 CPU/内存/超时；API 只返回预览地址。
 
-图片走 Pillow；视频走 ffmpeg（poster 图片或 MP4 代理）；EXR 走 oiiotool。工具不可用时在 `probe` 返回 `supported: false`，`generate` 返回 `preview_unsupported`。
+图片走 Pillow；视频走 ffmpeg（poster、MP4 代理、HLS）；EXR 走 oiiotool。工具不可用时在 `probe` 返回 `supported: false`，`generate` 返回 `preview_unsupported`。
 
 ## 非职责
 
@@ -33,6 +33,7 @@ Python 包位于 `src/moyu_preview/`：
   - `GET /healthz`（工具可用性）
   - `GET /probe/{asset_id}`
   - `GET /preview/{asset_id}/{profile}`
+  - `GET /preview/{asset_id}/{profile}/{filename}`（HLS 分片/播放列表）
   - `POST /purge/{asset_id}`
 
 内置 profile：
@@ -43,7 +44,7 @@ view:  maxWidth=1920, maxHeight=1920, format=jpeg, quality=85
 proxy: maxWidth=1280, maxHeight=720, format=mp4, quality=23
 ```
 
-视频请求 `thumb`/`view` 生成首帧图片；请求 `proxy` 生成 MP4 代理。HLS 尚未实现。
+视频请求 `thumb`/`view` 生成首帧图片；`proxy` 生成 MP4 代理；`hls` 生成 `index.m3u8` 与 TS 分片。
 
 `generate` 也接受自定义 profile 映射。
 
@@ -70,6 +71,7 @@ proxy: maxWidth=1280, maxHeight=720, format=mp4, quality=23
 - `preview.cacheDir`：缓存根目录；
 - `preview.serviceUrl`：API 调用预览服务的内部地址；为空时 API 在进程内调用 provider；
 - `preview.profiles`：额外/覆盖 profile。
+- HLS 播放列表经 API `/api/v1/previews/{id}/hls/index.m3u8` 访问，分片同目录。
 
 ## 测试
 

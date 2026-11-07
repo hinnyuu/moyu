@@ -475,6 +475,31 @@ def create_app(
         }.get(artifact.format, "application/octet-stream")
         return FileResponse(artifact.path, media_type=media)
 
+    @app.get("/api/v1/previews/{asset_id}/{profile}/{filename}")
+    async def get_preview_file(
+        asset_id: str,
+        profile: str,
+        filename: str,
+        session=Depends(current_session),
+    ):
+        if filename in (".", "..") or "/" in filename or "\\" in filename:
+            raise _http(404, "preview_not_found", "非法预览文件")
+        if preview_client is not None:
+            body, media = preview_client.generate_file(asset_id, profile, filename)
+            return Response(content=body, media_type=media)
+        artifact = previews.generate(asset_id, profile)
+        base = Path(artifact.path).parent.resolve()
+        target = (base / filename).resolve()
+        if target.parent != base or not target.is_file():
+            raise _http(404, "preview_not_found", "预览文件不存在")
+        if target.suffix == ".m3u8":
+            media = "application/vnd.apple.mpegurl"
+        elif target.suffix == ".ts":
+            media = "video/mp2t"
+        else:
+            media = "application/octet-stream"
+        return FileResponse(target, media_type=media, filename=filename)
+
     @app.post("/api/v1/admin/gateway/cert/reload")
     async def gateway_reload(request: Request, session=Depends(current_session)):
         require_csrf(request, session)

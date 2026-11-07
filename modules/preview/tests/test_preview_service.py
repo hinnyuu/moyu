@@ -1,4 +1,6 @@
 import io
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -58,6 +60,30 @@ class PreviewServiceTests(unittest.TestCase):
         response = self.client.get("/preview/nope/thumb")
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["code"], "asset_not_found")
+
+    def test_missing_preview_file(self):
+        response = self.client.get(f"/preview/{self.asset.id}/thumb/missing.ts")
+        self.assertEqual(response.status_code, 404)
+
+    @unittest.skipUnless(shutil.which("ffmpeg"), "ffmpeg 不可用")
+    def test_hls_generation_and_files(self):
+        root = Path(self.tmp.name)
+        video = root / "clip.mp4"
+        subprocess.run(
+            [
+                "ffmpeg", "-y", "-v", "error",
+                "-f", "lavfi", "-i", "testsrc=size=160x90:rate=10",
+                "-t", "1", "-pix_fmt", "yuv420p", str(video),
+            ],
+            check=True,
+        )
+        asset = AssetStore(self.storage).register_asset(video, original_name="clip.mp4")
+        playlist = self.client.get(f"/preview/{asset.id}/hls")
+        self.assertEqual(playlist.status_code, 200, playlist.text)
+        self.assertIn(b"#EXTM3U", playlist.content)
+        first = [line for line in playlist.content.decode().splitlines() if line.endswith(".ts")][0]
+        segment = self.client.get(f"/preview/{asset.id}/hls/{first}")
+        self.assertEqual(segment.status_code, 200, segment.text)
 
     def test_unknown_profile(self):
         response = self.client.get(f"/preview/{self.asset.id}/nope")

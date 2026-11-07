@@ -36,7 +36,6 @@
 
 ## 5. 已知未完成项（发布时必须在 Release notes 说明）
 
-- HLS 预览未实现。
 - WASM 转码未实现；客户端只生成 STORE ZIP。
 - 仅 amd64 镜像；aarch64 未在 CI 构建/验证。
 - Playwright 浏览器 E2E、明暗主题截图基线与对比度自动检查未接入。
