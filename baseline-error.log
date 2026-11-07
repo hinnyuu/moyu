@@ -1,8 +1,7 @@
+vite preview 未启动
 
-> moyu-web@0.0.0-dev test:e2e
-> playwright test tests/e2e/smoke.e2e.ts -g theme screenshots --update-snapshots=all
+> moyu-web@0.0.0-dev preview
+> vite preview --port 4173 --strictPort
 
-
-Error: Timed out waiting 60000ms from config.webServer.
-
-
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m4173[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
