@@ -72,7 +72,6 @@
 - [2026-11-06 修复截图基线 webServer 超时](commits/2026-11-06-fix-visual-webserver.md)
 - [2026-11-06 截图基线改为手动启动 preview](commits/2026-11-06-visual-manual-preview.md)
 - [2026-11-06 修复截图基线 preview 监听地址](commits/2026-11-06-visual-preview-host.md)
-- [2026-11-06 CI 失败日志诊断与清理](commits/2026-11-06-ci-failure-diagnostics.md)
 
 ## 决策记录（ADR）
 
