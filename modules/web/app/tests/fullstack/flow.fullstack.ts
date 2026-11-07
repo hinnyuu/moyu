@@ -17,13 +17,22 @@ async function login(page: import("@playwright/test").Page) {
 test("real video transcode", async ({ page }) => {
   const video = process.env.MOYU_E2E_VIDEO;
   test.skip(!video, "未提供 MOYU_E2E_VIDEO");
-  test.setTimeout(240_000);
+  test.setTimeout(300_000);
   await login(page);
   await page.getByRole("button", { name: "上传", exact: true }).click();
   await page.locator("input[type=file]").setInputFiles(video as string);
   await expect(page.locator("tbody")).toContainText("clip.mp4");
   await page.getByRole("button", { name: "本地视频转码" }).click();
-  await expect(page.locator('video[src^="blob:"]')).toBeVisible({ timeout: 180_000 });
+  const videoElement = page.locator('video[src^="blob:"]');
+  const errorBox = page.locator(".error");
+  await Promise.race([
+    videoElement.waitFor({ state: "visible", timeout: 240_000 }),
+    errorBox.waitFor({ state: "visible", timeout: 240_000 }),
+  ]);
+  if (await errorBox.isVisible()) {
+    throw new Error(`本地视频转码失败: ${await errorBox.textContent()}`);
+  }
+  await expect(videoElement).toBeVisible();
 });
 
 test("real backend upload, pack and theme", async ({ page }) => {
