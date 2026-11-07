@@ -70,6 +70,7 @@
 - [2026-11-06 截图基线生成诊断](commits/2026-11-06-visual-baseline-diagnostics.md)
 - [2026-11-06 截图基线失败日志落盘](commits/2026-11-06-visual-baseline-log-commit.md)
 - [2026-11-06 修复截图基线 webServer 超时](commits/2026-11-06-fix-visual-webserver.md)
+- [2026-11-06 截图基线改为手动启动 preview](commits/2026-11-06-visual-manual-preview.md)
 
 ## 决策记录（ADR）
 

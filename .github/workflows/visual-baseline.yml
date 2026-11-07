@@ -31,13 +31,28 @@ jobs:
         working-directory: modules/web/app
         env:
           MOYU_UPDATE_SNAPSHOTS: "1"
+          MOYU_E2E_NO_WEBSERVER: "1"
         run: |
+          npm run preview -- --port 4173 --strictPort > /tmp/preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill $PREVIEW_PID 2>/dev/null || true' EXIT
+          ready=0
+          for _ in $(seq 1 30); do
+            if curl -s -o /dev/null "http://127.0.0.1:4173/"; then ready=1; break; fi
+            sleep 1
+          done
           set +e
-          npm run test:e2e -- tests/e2e/smoke.e2e.ts -g "theme screenshots" \
-            --update-snapshots=all 2>&1 | tee /tmp/playwright.log
-          status=${PIPESTATUS[0]}
+          if [ "$ready" -eq 1 ]; then
+            npm run test:e2e -- tests/e2e/smoke.e2e.ts -g "theme screenshots" \
+              --update-snapshots=all 2>&1 | tee /tmp/playwright.log
+            status=${PIPESTATUS[0]}
+          else
+            echo "vite preview 未启动" > /tmp/playwright.log
+            status=1
+          fi
+          cat /tmp/preview.log >> /tmp/playwright.log
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          tail -120 /tmp/playwright.log >> "$GITHUB_STEP_SUMMARY"
+          tail -160 /tmp/playwright.log >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           exit "$status"
       - name: Commit failure diagnostics

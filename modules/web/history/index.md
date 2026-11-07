@@ -23,3 +23,4 @@
 - [2026-11-06 截图基线脚手架](2026-11-06-visual-baseline.md)
 - [2026-11-06 修复截图生成与视频测试诊断](2026-11-06-visual-baseline-fix.md)
 - [2026-11-06 截图基线 webServer 修复](2026-11-06-visual-webserver.md)
+- [2026-11-06 截图基线手动 preview](2026-11-06-visual-manual-preview.md)
