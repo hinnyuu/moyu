@@ -4,3 +4,4 @@
 
 - [2026-11-06 模块骨架建立](2026-11-06-module-scaffold.md)
 - [2026-11-06 阶段 2 最小实现](2026-11-06-uploads-implementation.md)
+- [2026-11-06 tusd 集成说明](2026-11-06-tusd-integration.md)

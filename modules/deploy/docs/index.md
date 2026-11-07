@@ -1,6 +1,6 @@
 # deploy 模块文档
 
-状态：v0.0.1 阶段 2 实现（单镜像，gateway/api/worker/preview）。
+状态：v0.0.1 阶段 2 实现（单镜像，gateway/api/worker/preview/tusd）。
 
 ## 职责
 
@@ -47,6 +47,7 @@ modules/deploy/
 | api | `moyu api` | `${MOYU_API_PORT}`（pod 内） | `/config` 读写、`/data`、`/run/secrets` 只读 |
 | worker | `moyu worker` | 无 | `/config` 只读、`/data` |
 | preview | `moyu preview` | `${MOYU_PREVIEW_PORT}`（pod 内） | `/config` 只读、`/data` |
+| tusd | `moyu tusd` | `${MOYU_TUSD_PORT}`（pod 内） | `/data` |
 
 所有端口和路径来自 `deploy.env` / systemd 环境，不在单元文件中写死。
 
@@ -66,7 +67,7 @@ modules/deploy/
 - `storage.dataRoot` 使用 `/data`。
 - `preview.cacheDir` 使用 `/data/preview`。
 - `gateway.upstream.url` 必须指向 Pod 内 API，例如 `http://api:<api-port>`。
-- secret：`/run/secrets/bootstrap_token`、`/config/secrets/session-state.json`、`/config/secrets/session.secret`、`/config/secrets/gateway_reload_token`。
+- secret：`/run/secrets/bootstrap_token`、`/config/secrets/session-state.json`、`/config/secrets/session.secret`、`/config/secrets/gateway_reload_token`；tusd hook token 由部署环境变量提供。
 
 ## 资源与安全
 
@@ -90,16 +91,15 @@ python3 modules/deploy/scripts/process_e2e.py
 
 `.github/workflows/podman.yml` 在 amd64 runner 上安装 Podman，构建单镜像并运行 `modules/deploy/scripts/podman_smoke.sh`：
 
-- 启动 api/worker/preview/gateway 四容器 pod；
+- 启动 api/worker/preview/tusd/gateway 五容器 pod；
 - 验证 pod 网络、TLS gateway、配置/数据/secret 挂载；
 - 通过 gateway 完成会话登录；
-- 验证 worker/preview 容器存活。
+- 验证 worker/preview/tusd 容器存活。
 
 ## 当前限制
 
 - 本沙箱没有 Podman，容器不能本地运行；镜像与 pod 由 amd64 CI 验证。
 
-- `tusd` 尚未打进镜像；当前使用 API 的 tus 兼容分片端点。独立 tusd 容器待补。
 - 未实现 GHCR 发布 workflow、SBOM/漏洞扫描、升级/回滚脚本。
 
 ## 失败模式

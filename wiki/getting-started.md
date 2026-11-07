@@ -23,7 +23,7 @@ Pod: moyu
 ├─ api       # HTTP API、Web 静态文件、当前内置图片预览
 ├─ worker    # 打包任务
 ├─ preview   # 图片/视频/EXR 预览服务
-└─ tusd      # 目标：独立上传容器（当前未接入）
+└─ tusd      # 大文件断点续传
 ```
 
 - 有外部 Caddy：不启动 gateway，由 Caddy 负责 TLS 和公网端口。
@@ -41,5 +41,5 @@ Pod: moyu
 ## 当前状态
 
 - 核心打包链路、API、Web、gateway、deploy、wasm 核心已实现并有 CI。
-- preview 已是独立容器；tusd 尚未接入；HLS 尚未实现。
+- preview 与 tusd 已是独立容器；HLS 尚未实现。
 - 尚未创建 v0.0.1 标签。

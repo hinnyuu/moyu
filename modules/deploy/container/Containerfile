@@ -3,6 +3,8 @@
 ARG NODE_VERSION=22
 ARG RUST_VERSION=1.99
 ARG PYTHON_VERSION=3.12
+ARG TUSD_VERSION=2.8.0
+ARG TARGETARCH=amd64
 
 FROM node:${NODE_VERSION}-alpine AS web
 WORKDIR /src/modules/web/app
@@ -19,6 +21,17 @@ COPY modules/gateway/rust modules/gateway/rust
 COPY modules/wasm-client/rust modules/wasm-client/rust
 RUN cargo build --release -p moyu-gateway
 
+FROM debian:bookworm-slim AS tusd
+ARG TUSD_VERSION
+ARG TARGETARCH
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl \
+  && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL "https://github.com/tus/tusd/releases/download/v${TUSD_VERSION}/tusd_linux_${TARGETARCH}.tar.gz" \
+  -o /tmp/tusd.tar.gz \
+  && tar -xzf /tmp/tusd.tar.gz -C /tmp \
+  && install -m 0755 /tmp/tusd /usr/local/bin/tusd
+
 FROM python:${PYTHON_VERSION}-slim-bookworm
 
 RUN apt-get update \
@@ -34,6 +47,7 @@ RUN python3 -m pip install --no-cache-dir \
   pillow
 
 COPY --from=gateway /src/target/release/moyu-gateway /usr/local/bin/moyu-gateway
+COPY --from=tusd /usr/local/bin/tusd /usr/local/bin/tusd
 COPY --from=web /src/modules/web/app/dist /opt/moyu/web
 COPY modules /opt/moyu/modules
 COPY modules/deploy/bin/moyu /usr/local/bin/moyu

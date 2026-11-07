@@ -33,6 +33,7 @@
 - [2026-11-06 网关 token 管理与契约对齐](commits/2026-11-06-gateway-token-contract-alignment.md)
 - [2026-11-06 config schema 迁移与审计](commits/2026-11-06-config-migrations-audit.md)
 - [2026-11-06 preview 独立服务与容器](commits/2026-11-06-preview-service-container.md)
+- [2026-11-06 tusd 容器与内部完成钩子](commits/2026-11-06-tusd-integration.md)
 
 ## 决策记录（ADR）
 

@@ -6,6 +6,7 @@ IMAGE="${MOYU_SMOKE_IMAGE:-moyu:smoke}"
 PUBLIC_PORT="${MOYU_SMOKE_PUBLIC_PORT:-18080}"
 API_PORT="${MOYU_SMOKE_API_PORT:-18081}"
 PREVIEW_PORT="${MOYU_SMOKE_PREVIEW_PORT:-18082}"
+TUSD_PORT="${MOYU_SMOKE_TUSD_PORT:-18083}"
 GATEWAY_PORT="${MOYU_SMOKE_GATEWAY_PORT:-18443}"
 ADMIN_PORT="${MOYU_SMOKE_ADMIN_PORT:-19443}"
 POD="moyu-smoke-$$"
@@ -20,6 +21,8 @@ cleanup() {
     podman logs "${POD}-api" 2>&1 | tail -40 || true
     echo "--- preview logs ---"
     podman logs "${POD}-preview" 2>&1 | tail -40 || true
+    echo "--- tusd logs ---"
+    podman logs "${POD}-tusd" 2>&1 | tail -40 || true
     echo "--- worker logs ---"
     podman logs "${POD}-worker" 2>&1 | tail -40 || true
     echo "--- gateway logs ---"
@@ -63,6 +66,7 @@ podman run -d --pod "$POD" --name "${POD}-api" \
   -e MOYU_BOOTSTRAP_TOKEN_FILE=/run/secrets/bootstrap_token \
   -e MOYU_SESSION_STATE_FILE=/config/secrets/session-state.json \
   -e MOYU_SESSION_SECRET_FILE=/config/secrets/session.secret \
+  -e MOYU_TUSD_HOOK_TOKEN=smoke-hook-token \
   -v "$TMP/config:/config" \
   -v "$TMP/data:/data" \
   -v "$TMP/secrets:/run/secrets:ro" \
@@ -74,6 +78,15 @@ podman run -d --pod "$POD" --name "${POD}-preview" \
   -v "$TMP/config:/config:ro" \
   -v "$TMP/data:/data" \
   "$IMAGE" preview
+
+podman run -d --pod "$POD" --name "${POD}-tusd" \
+  -e MOYU_TUSD_LISTEN="0.0.0.0:${TUSD_PORT}" \
+  -e MOYU_TUSD_UPLOAD_DIR=/data/tusd \
+  -e MOYU_TUSD_BASE_PATH=/files/ \
+  -e MOYU_TUSD_HOOK_URL="http://127.0.0.1:${API_PORT}/api/v1/internal/tusd/hook" \
+  -e MOYU_TUSD_HOOK_TOKEN=smoke-hook-token \
+  -v "$TMP/data:/data" \
+  "$IMAGE" tusd
 
 podman run -d --pod "$POD" --name "${POD}-worker" \
   -e MOYU_CONFIG_DIR=/config \
@@ -114,11 +127,11 @@ session="$(curl -k -s -b "$TMP/cookies" "https://127.0.0.1:${PUBLIC_PORT}/api/v1
 echo "$session" | grep -q '"username":"admin"'
 echo "$session" | grep -q '"csrf"'
 
-for name in worker preview; do
+for name in worker preview tusd; do
   if ! podman ps --format '{{.Names}}' | grep -q "${POD}-${name}"; then
     echo "${name} container is not running" >&2
     exit 1
   fi
 done
 
-echo "PASS: image roles, pod networking, TLS gateway, preview container, config/data/secrets mounts, session login"
+echo "PASS: image roles, pod networking, TLS gateway, preview/tusd containers, config/data/secrets mounts, session login"

@@ -44,6 +44,7 @@ contracts, pipeline, storage, uploads, preview, config
 - `POST/GET/DELETE /api/v1/auth/session`
 - `GET /api/v1/config`、`GET /api/v1/config/audit`、`GET/PUT /api/v1/config/{module}`
 - `POST /api/v1/uploads`、`GET/PATCH /api/v1/uploads/{id}`、`POST /api/v1/uploads/{id}/finish`
+- `POST /api/v1/internal/tusd/hook`（内部，token 校验，tusd pre-create/post-finish）
 - `POST/GET /api/v1/jobs`、`GET/DELETE /api/v1/jobs/{id}`、`GET /api/v1/jobs/{id}/events`（SSE）、`GET /api/v1/jobs/{id}/download`
 - `GET /api/v1/assets/{id}/download`
 - `GET /api/v1/previews/{id}/{profile}`（配置 `preview.serviceUrl` 时代理内部预览服务，否则进程内 Pillow）

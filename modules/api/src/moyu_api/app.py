@@ -5,7 +5,10 @@ It never runs the pack pipeline; workers claim jobs from the same storage.
 """
 
 import asyncio
+import base64
+import hmac
 import json
+import os
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
@@ -95,7 +98,14 @@ def _asset_dict(asset):
     }
 
 
-def create_app(storage, config_provider, auth, gateway_admin=None, preview_client=None):
+def create_app(
+    storage,
+    config_provider,
+    auth,
+    gateway_admin=None,
+    preview_client=None,
+    tusd_hook_token=None,
+):
     effective = config_provider.load()
     api_config = effective.modules["api"]
     uploads_config = effective.modules["uploads"]
@@ -131,6 +141,8 @@ def create_app(storage, config_provider, auth, gateway_admin=None, preview_clien
                 reload_api.get("tokenFile", ""),
                 reload_api.get("listen", ""),
             )
+    if tusd_hook_token is None:
+        tusd_hook_token = os.environ.get("MOYU_TUSD_HOOK_TOKEN", "")
     max_json_body = int(api_config.get("maxJsonBodyBytes", 1048576))
     tus_base_path = str(uploads_config.get("tusBasePath", "/files")).rstrip("/")
 
@@ -144,6 +156,7 @@ def create_app(storage, config_provider, auth, gateway_admin=None, preview_clien
     app.state.previews = previews
     app.state.gateway_admin = gateway_admin
     app.state.preview_client = preview_client
+    app.state.tusd_hook_token = tusd_hook_token
 
     def current_session(request: Request):
         token = request.cookies.get(auth.cookie_name)
@@ -284,6 +297,59 @@ def create_app(storage, config_provider, auth, gateway_admin=None, preview_clien
             raise _http(400, "invalid_patch", "patch 必须是映射")
         result = config_provider.write(module, patch, body.get("revision"))
         return {"config": result.data, "revision": result.revision}
+
+    def hook_response(status, body):
+        return {"HTTPResponse": {"StatusCode": status, "Body": body}}
+
+    def decode_meta(value):
+        if not value:
+            return ""
+        try:
+            return base64.b64decode(str(value)).decode("utf-8")
+        except (ValueError, UnicodeDecodeError):
+            return str(value)
+
+    @app.post("/api/v1/internal/tusd/hook")
+    async def tusd_hook(request: Request):
+        token = request.query_params.get("token") or request.headers.get(
+            "X-Moyu-Hook-Token", ""
+        )
+        if not tusd_hook_token or not hmac.compare_digest(token, tusd_hook_token):
+            raise _http(403, "hook_unauthorized", "hook token 不正确")
+        payload = await _json_body(request)
+        hook_type = payload.get("Type")
+        upload = payload.get("Event", {}).get("Upload", {})
+        metadata = upload.get("MetaData") or {}
+        filename = decode_meta(metadata.get("filename")) or "upload.bin"
+        media_type = (
+            decode_meta(metadata.get("filetype")) or "application/octet-stream"
+        )
+        try:
+            size = int(upload.get("Size") or 0)
+        except (TypeError, ValueError):
+            size = 0
+        if hook_type == "pre-create":
+            if size <= 0:
+                return hook_response(400, "缺少上传大小")
+            if size > uploads.max_upload_bytes:
+                return hook_response(413, "超过上传上限")
+            try:
+                storage.check_quota(size)
+            except StorageError:
+                return hook_response(507, "存储配额不足")
+            return hook_response(200, "ok")
+        if hook_type == "post-finish":
+            path = (upload.get("Storage") or {}).get("Path")
+            if not path:
+                return hook_response(500, "缺少存储路径")
+            try:
+                asset = assets.register_asset(
+                    path, original_name=filename, media_type=media_type
+                )
+            except StorageError as exc:
+                return hook_response(500, exc.message)
+            return hook_response(200, asset.id)
+        return hook_response(200, "ignored")
 
     @app.post("/api/v1/uploads", status_code=201)
     async def create_upload(request: Request, session=Depends(current_session)):

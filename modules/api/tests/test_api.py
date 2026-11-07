@@ -1,3 +1,4 @@
+import base64
 import io
 import json
 import sys
@@ -83,7 +84,13 @@ class ApiTests(unittest.TestCase):
             ttl_seconds=3600,
         )
         self.gateway = FakeGatewayAdmin()
-        self.app = create_app(self.storage, self.config, self.auth, gateway_admin=self.gateway)
+        self.app = create_app(
+            self.storage,
+            self.config,
+            self.auth,
+            gateway_admin=self.gateway,
+            tusd_hook_token="hook-token",
+        )
         self.client = TestClient(self.app)
 
     def tearDown(self):
@@ -323,6 +330,58 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(revoked.status_code, 204)
         self.assertFalse(self.client.get("/api/v1/admin/gateway/token").json()["exists"])
         self.assertEqual(self.gateway.calls, ["reload", "rotate", "revoke"])
+
+    def test_tusd_hook(self):
+        base = "/api/v1/internal/tusd/hook?token=hook-token"
+        denied = self.client.post(
+            "/api/v1/internal/tusd/hook?token=nope",
+            json={"Type": "pre-create", "Event": {"Upload": {"Size": 1}}},
+        )
+        self.assertEqual(denied.status_code, 403)
+
+        valid = self.client.post(
+            base,
+            json={
+                "Type": "pre-create",
+                "Event": {"Upload": {"Size": 10, "MetaData": {}}},
+            },
+        )
+        self.assertEqual(valid.status_code, 200)
+        self.assertEqual(valid.json()["HTTPResponse"]["StatusCode"], 200)
+
+        too_large = self.client.post(
+            base,
+            json={
+                "Type": "pre-create",
+                "Event": {"Upload": {"Size": 3_000_000_000, "MetaData": {}}},
+            },
+        )
+        self.assertEqual(too_large.json()["HTTPResponse"]["StatusCode"], 413)
+
+        source = self.storage.data_root / "tusd-upload.bin"
+        source.write_bytes(b"tusd-data")
+        metadata = {
+            "filename": base64.b64encode(b"tusd.bin").decode("ascii"),
+            "filetype": base64.b64encode(b"application/octet-stream").decode("ascii"),
+        }
+        finished = self.client.post(
+            base,
+            json={
+                "Type": "post-finish",
+                "Event": {
+                    "Upload": {
+                        "Size": 9,
+                        "MetaData": metadata,
+                        "Storage": {"Type": "filestore", "Path": str(source)},
+                    }
+                },
+            },
+        )
+        self.assertEqual(finished.status_code, 200, finished.text)
+        asset_id = finished.json()["HTTPResponse"]["Body"]
+        asset = AssetStore(self.storage).get_asset(asset_id)
+        self.assertEqual(asset.original_name, "tusd.bin")
+        self.assertFalse(source.exists())
 
     def test_request_size_limit(self):
         csrf = self.login()

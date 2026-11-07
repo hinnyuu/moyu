@@ -1,0 +1,23 @@
+[Unit]
+Description=moyu tusd
+After=moyu-pod.service
+
+[Container]
+Image=${MOYU_IMAGE}
+ContainerName=moyu-tusd
+Pod=moyu.pod
+Exec=moyu tusd
+Environment=MOYU_TUSD_LISTEN=0.0.0.0:${MOYU_TUSD_PORT}
+Environment=MOYU_TUSD_UPLOAD_DIR=/data/tusd
+Environment=MOYU_TUSD_BASE_PATH=${MOYU_TUSD_BASE_PATH}
+Environment=MOYU_TUSD_HOOK_URL=http://127.0.0.1:${MOYU_API_PORT}/api/v1/internal/tusd/hook
+Environment=MOYU_TUSD_HOOK_TOKEN=${MOYU_TUSD_HOOK_TOKEN}
+Volume=${MOYU_DATA_DIR}:/data:Z
+DropCapability=ALL
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

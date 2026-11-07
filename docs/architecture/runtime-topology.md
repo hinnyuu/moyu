@@ -4,7 +4,7 @@
 
 - 唯一镜像：`ghcr.io/hinnyuu/moyu:<version>`。
 - 不使用多镜像微服务；`gateway` 也来自同一个镜像。
-- 镜像内包含 Python 运行时、Rust gateway、ffmpeg、libvips、OpenImageIO、Web 静态文件；tusd 尚未接入。
+- 镜像内包含 Python 运行时、Rust gateway、tusd、ffmpeg、libvips、OpenImageIO、Web 静态文件。
 - 通过入口 `moyu <role>` 选择角色。
 
 ## 2. 容器

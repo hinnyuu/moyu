@@ -40,7 +40,12 @@ def main():
         ttl_seconds=api_config["session"]["ttlSeconds"],
         cookie_secure=os.environ.get("MOYU_COOKIE_SECURE") == "1",
     )
-    app = create_app(storage, provider, auth)
+    app = create_app(
+        storage,
+        provider,
+        auth,
+        tusd_hook_token=os.environ.get("MOYU_TUSD_HOOK_TOKEN", ""),
+    )
 
     listen = os.environ.get("MOYU_API_LISTEN", "")
     if ":" not in listen:

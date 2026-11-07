@@ -178,7 +178,7 @@ cancel_session(session_id) -> bool
 expire_sessions(ttl) -> int
 ```
 
-tusd 实现通过完成钩子调用 `finish_session`；API 不直接写上传文件。
+tusd 容器通过内部 hook（pre-create/post-finish）校验并登记资产；内嵌分片端点保留给开发/无 tusd 部署。
 
 ## 5. 预览
 

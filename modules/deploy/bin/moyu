@@ -13,8 +13,21 @@ case "$role" in
   api) exec python3 -m moyu_api ;;
   worker) exec python3 -m moyu_worker ;;
   preview) exec python3 -m moyu_preview ;;
+  tusd)
+    listen="${MOYU_TUSD_LISTEN:?MOYU_TUSD_LISTEN 未设置}"
+    host="${listen%:*}"
+    port="${listen##*:}"
+    upload_dir="${MOYU_TUSD_UPLOAD_DIR:?MOYU_TUSD_UPLOAD_DIR 未设置}"
+    base_path="${MOYU_TUSD_BASE_PATH:-/files/}"
+    hook="${MOYU_TUSD_HOOK_URL:?MOYU_TUSD_HOOK_URL 未设置}"
+    token="${MOYU_TUSD_HOOK_TOKEN:?MOYU_TUSD_HOOK_TOKEN 未设置}"
+    mkdir -p "$upload_dir"
+    exec /usr/local/bin/tusd -host "$host" -port "$port" \
+      -base-path "$base_path" -upload-dir "$upload_dir" \
+      -hooks-http "${hook}?token=${token}"
+    ;;
   *)
-    echo "moyu: 未知角色 $role（可用：gateway api worker preview）" >&2
+    echo "moyu: 未知角色 $role（可用：gateway api worker preview tusd）" >&2
     exit 64
     ;;
 esac
