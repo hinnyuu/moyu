@@ -42,6 +42,7 @@
 - [2026-11-06 HLS 预览](commits/2026-11-06-hls-preview.md)
 - [2026-11-06 Playwright 前端 E2E](commits/2026-11-06-playwright-e2e.md)
 - [2026-11-06 修复 Playwright/Vitest 测试文件冲突](commits/2026-11-06-fix-playwright-vitest.md)
+- [2026-11-06 ZIP64 65536 条目测试](commits/2026-11-06-zip64-entry-count.md)
 
 ## 决策记录（ADR）
 

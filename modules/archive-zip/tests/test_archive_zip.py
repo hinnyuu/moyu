@@ -116,6 +116,19 @@ class WriterTests(unittest.TestCase):
         with ArchiveWriter(output) as writer:
             writer.add_entry("a.txt", DOS, [b"x"], force_zip64=True)
 
+    def test_zip64_entry_count(self):
+        output = self.root / "many.zip"
+        total = 65_536
+        writer = ArchiveWriter(output, verify=False)
+        for index in range(total):
+            writer.add_entry(f"f/{index}.txt", DOS, [b"x"])
+        writer.finalize()
+        result = verify_archive(output, check_crc=False)
+        self.assertTrue(result["ok"], result["problems"][:3])
+        self.assertEqual(result["entries"], total)
+        with zipfile.ZipFile(output) as zf:
+            self.assertEqual(len(zf.infolist()), total)
+
     def test_part_file_is_removed_on_abort(self):
         output = self.root / "out.zip"
         writer = ArchiveWriter(output)

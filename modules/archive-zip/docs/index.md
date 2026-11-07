@@ -39,7 +39,7 @@ Python 包位于 `src/moyu_archive_zip/`，对外导出：
 
 ## 测试
 
-`tests/test_archive_zip.py` 覆盖：DOS 编解码与范围、STORE/DEFLATE、条目名安全、重复条目、字节数不一致、源文件写入、ZIP64 extra、原子性、UT/未知 extra 拒绝、期望条目不匹配、CRC 校验。
+`tests/test_archive_zip.py` 覆盖：DOS 编解码与范围、STORE/DEFLATE、条目名安全、重复条目、字节数不一致、源文件写入、ZIP64 extra、65536 条目 ZIP64 EOCD、原子性、UT/未知 extra 拒绝、期望条目不匹配、CRC 校验。
 
 运行：
 
