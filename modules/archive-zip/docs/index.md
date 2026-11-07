@@ -37,6 +37,10 @@ Python 包位于 `src/moyu_archive_zip/`，对外导出：
 
 失败时 `.part` 文件被删除，目标路径不会出现半成品。
 
+## 大文件验证
+
+`scripts/large_file_e2e.py` 创建 4GiB+1KiB 稀疏文件，STORE 写入 ZIP64，校验 central directory 与条目大小。当前环境结果：PASS，输出约 4.0GiB，耗时约 20 秒。
+
 ## 测试
 
 `tests/test_archive_zip.py` 覆盖：DOS 编解码与范围、STORE/DEFLATE、条目名安全、重复条目、字节数不一致、源文件写入、ZIP64 extra、65536 条目 ZIP64 EOCD、原子性、UT/未知 extra 拒绝、期望条目不匹配、CRC 校验。

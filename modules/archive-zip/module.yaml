@@ -9,3 +9,4 @@ history: history/index.md
 wiki: wiki/index.md
 tests:
   - tests/test_archive_zip.py
+  - scripts/large_file_e2e.py

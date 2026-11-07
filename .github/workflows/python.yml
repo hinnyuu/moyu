@@ -28,3 +28,5 @@ jobs:
         run: python3 modules/deploy/scripts/process_e2e.py
       - name: Upload session restart resume
         run: python3 modules/deploy/scripts/restart_resume_e2e.py
+      - name: ZIP64 >4GiB entry
+        run: python3 modules/archive-zip/scripts/large_file_e2e.py

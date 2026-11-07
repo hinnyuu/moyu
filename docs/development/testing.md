@@ -67,7 +67,7 @@
 
 当前已接入：
 
-- Python 单元测试与进程级 E2E：`python` workflow 遍历 `modules/*/tests`，然后运行 `process_e2e.py` 与 `restart_resume_e2e.py`。
+- Python 单元测试与进程级 E2E：`python` workflow 遍历 `modules/*/tests`，然后运行 `process_e2e.py`、`restart_resume_e2e.py` 与 `archive-zip/scripts/large_file_e2e.py`。
 - Rust fmt/check/clippy/test/wasm target：`rust` workflow。
 - Web typecheck/Vitest/build/Playwright mock E2E（含 axe WCAG AA 亮/暗）：`web` workflow；真实 api/worker + Web 的 Playwright：`fullstack` workflow。
 - Podman 单镜像构建与五容器 smoke：`podman` workflow。
@@ -78,7 +78,7 @@
 
 - Rust `cargo deny` / `cargo audit`。
 - 明暗主题截图基线；
-- >4GiB 单文件、更多故障注入测试；>65535 条目与服务重启续传已覆盖。
+- 更多故障注入测试；>4GiB 单文件、>65535 条目与服务重启续传已覆盖。
 - aarch64 镜像构建与 smoke。
 
 ## 7. Agent-gate
