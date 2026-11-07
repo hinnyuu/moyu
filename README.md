@@ -58,3 +58,5 @@ wiki/
 ## License
 
 MIT
+
+发布候选说明：[docs/releases/v0.0.1.md](docs/releases/v0.0.1.md)。

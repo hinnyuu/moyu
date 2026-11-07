@@ -52,6 +52,7 @@
 - [2026-11-06 WCAG AA 自动检查](commits/2026-11-06-wcag-axe.md)
 - [2026-11-06 API 重启续传 E2E](commits/2026-11-06-restart-resume-e2e.md)
 - [2026-11-06 >4GiB ZIP64 实测](commits/2026-11-06-large-file-zip64.md)
+- [2026-11-06 v0.0.1 发布说明候选](commits/2026-11-06-release-notes-candidate.md)
 
 ## 决策记录（ADR）
 
