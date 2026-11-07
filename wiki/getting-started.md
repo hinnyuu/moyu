@@ -20,7 +20,7 @@ moyu 把已经完成但还没提交的渲染文件重新打包成交付 ZIP：�
 ```text
 Pod: moyu
 ├─ gateway   # 可选：项目自己终止 TLS 时启用
-├─ api       # HTTP API、Web 静态文件、当前内置图片预览
+├─ api       # HTTP API、Web 静态文件
 ├─ worker    # 打包任务
 ├─ preview   # 图片/视频/EXR 预览服务
 └─ tusd      # 大文件断点续传

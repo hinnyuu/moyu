@@ -1,4 +1,4 @@
-# 测试策略（草稿）
+# 测试策略（v0.0.1）
 
 ## 1. 测试层级
 
@@ -65,13 +65,21 @@
 
 ## 6. CI
 
-- Python 单元/集成测试：`python` workflow 遍历 `modules/*/tests` 执行 `unittest discover`。
-- Rust fmt/clippy/test/deny/audit。
-- WASM target check + wasm-pack。
-- Web lint/typecheck/unit/E2E（Playwright）。
-- Web 主题：light/dark/system 切换、刷新持久化、首屏无闪烁、关键页面截图基线、对比度/焦点/禁用态检查；媒体预览不得随主题反相。
+当前已接入：
+
+- Python 单元测试与进程级 E2E：`python` workflow 遍历 `modules/*/tests`，然后运行 `process_e2e.py`。
+- Rust fmt/check/clippy/test/wasm target：`rust` workflow。
+- Web typecheck/Vitest/build：`web` workflow。
+- Podman 单镜像构建与五容器 smoke：`podman` workflow。
+- 发布：`v*` 标签触发 `release` workflow（GHCR + SBOM + Trivy）。
 - `agent-gate` 按 commit 检查。
-- Podman smoke test 可在自托管 runner 或本地执行；GitHub 托管 runner 做逻辑测试。
+
+尚未接入：
+
+- Rust `cargo deny` / `cargo audit`。
+- Playwright 浏览器 E2E 与明暗主题截图基线/对比度自动检查。
+- >4GiB ZIP64、>65535 条目、服务重启续传等大文件/故障注入测试。
+- aarch64 镜像构建与 smoke。
 
 ## 7. Agent-gate
 

@@ -38,6 +38,7 @@
 - [2026-11-06 Web 批量队列与断点续传](commits/2026-11-06-web-batch-resume.md)
 - [2026-11-06 Web WASM 接入与镜像产物](commits/2026-11-06-web-wasm-integration.md)
 - [2026-11-06 GHCR 发布与供应链报告](commits/2026-11-06-release-supply-chain.md)
+- [2026-11-06 发布前文档二轮校对与发布清单](commits/2026-11-06-docs-audit-release-checklist.md)
 
 ## 决策记录（ADR）
 

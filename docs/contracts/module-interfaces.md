@@ -247,7 +247,7 @@ transcode(file, profile) -> preview artifact   # 待实现
 ```
 
 - 可选能力，默认关闭；
-- 当前只有 STORE ZIP 核心与 WASM 绑定，尚未产出浏览器 wasm/js 包；
+- STORE ZIP 核心、WASM 绑定与镜像 wasm 产物已存在；Web 懒加载，转码待补；
 - 客户端 ZIP 只保证 DOS mtime，不承诺内部元数据改写；
 - 能力检测失败时自动回退服务端；
 - 不阻塞主链路。

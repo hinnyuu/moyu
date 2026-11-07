@@ -1,4 +1,4 @@
-# 模块清单与边界（v0.0.1 草稿）
+# 模块清单与边界（v0.0.1）
 
 ## 1. 模块原则
 
@@ -12,8 +12,8 @@
   docs/
   history/
   wiki/
-  src/        # 实现开始后
-  tests/      # 实现开始后
+  src/        # 实现
+  tests/      # 测试
   ```
 - 模块可以独立维护、测试、替换；替换时其他模块只改装配配置。
 
@@ -29,13 +29,13 @@
 | `config` | 配置加载、schema 校验、默认值、原子写入、last-known-good | contracts | YAML/TOML、存储后端 |
 | `storage` | 上传暂存、资产、任务、输出、预览缓存、配额、清理 | contracts | 本地 FS → NAS/S3 |
 | `uploads` | tus 会话、完成钩子、入库 | contracts, storage | tusd → 其他协议 |
-| `preview` | 媒体探测、缩略图、图片代理、视频代理/HLS | contracts, storage | ffmpeg/libvips/OpenImageIO |
+| `preview` | 媒体探测、图片/视频/EXR 预览、MP4 代理；HLS 待补 | contracts, storage | ffmpeg/libvips/OpenImageIO |
 | `api` | HTTP API、认证、任务/上传接口、Web 静态文件 | contracts, pipeline, storage, uploads, preview, config | FastAPI → 其他 |
 | `worker` | 后台打包任务、进度、取消、恢复 | pipeline, storage, config | 单进程 → 队列 |
 | `web` | React + Vite + TypeScript 静态 SPA，支持 system/light/dark 主题 | contracts 生成客户端 | 框架可替换 |
-| `wasm-client` | 可选浏览器 ZIP/预览转码；Rust WASM | contracts, core-rust | 可禁用/替换 |
+| `wasm-client` | 可选浏览器 ZIP；转码待补；Rust WASM | contracts, core-time | 可禁用/替换 |
 | `gateway` | Rust TLS、反向代理、证书热重载、双栈、token API | contracts, config | Rust 实现可替换 |
-| `deploy` | Podman/Quadlet、卷、端口、GHCR、运维文档 | 全部模块的运维事实 | 部署实现可替换 |
+| `deploy` | Podman/Quadlet、卷、端口、GHCR、发布与运维文档 | 全部模块的运维事实 | 部署实现可替换 |
 | `agent-gate` | 文档/history/wiki/契约门禁 | 仓库自身 | 工具可替换 |
 
 ## 3. 依赖方向
@@ -57,7 +57,7 @@ web（只依赖 API 客户端）
 - `core-time` 不依赖 I/O、数据库、Web。
 - `media-metadata` 不依赖 ZIP、Web、数据库。
 - `preview` 不依赖打包 pipeline；它只消费资产。
-- `web` 不直接 import 后端代码，只使用生成的客户端。
+- `web` 不直接 import 后端代码，只使用手写 fetch 客户端（契约由 OpenAPI 约束）。
 - `deploy` 不参与运行时业务逻辑。
 
 ## 4. 标准接口
@@ -89,7 +89,7 @@ Rust 只用于：
 
 - `gateway`：原生 TLS/反代；
 - `wasm-client`：浏览器 ZIP/预览核心；
-- `core-rust`：target-neutral 的时间/DOS/契约类型。
+- `moyu-core`（core-time）：target-neutral 的时间/DOS/契约类型。
 
 结构：
 
@@ -102,7 +102,7 @@ Rust 只用于：
 
 - 一个 workspace，三个 crate。
 - gateway 和 wasm-client 不互相依赖。
-- `core-rust` 不引入 tokio/hyper/文件系统等原生依赖。
+- `moyu-core` 不引入 tokio/hyper/文件系统等原生依赖。
 - 每个 crate 的 docs/history/wiki 仍在对应模块目录下。
 
 ## 6. 替换与 conformance

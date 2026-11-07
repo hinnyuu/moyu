@@ -32,7 +32,7 @@ check 命令；commit 遍历
 
 工具可替换；规则文档化。
 
-## Phase 0 实现
+## 已实现
 
 - CLI：`python3 modules/agent-gate/src/agent_gate.py check --staged`
 - 支持 `--base <ref>` 按 commit 遍历，`--all` 只做结构/链接检查。
