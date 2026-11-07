@@ -31,7 +31,7 @@ jobs:
         working-directory: modules/web/app
         env:
           MOYU_UPDATE_SNAPSHOTS: "1"
-        run: npx playwright test tests/e2e/smoke.e2e.ts -g "theme screenshots" --update-snapshots
+        run: npx playwright test tests/e2e/smoke.e2e.ts -g "theme screenshots" --update-snapshots=all
       - name: Commit baselines
         run: |
           git config user.name "github-actions[bot]"

@@ -66,6 +66,7 @@
 - [2026-11-06 真实视频转码 E2E](commits/2026-11-06-video-transcode-e2e.md)
 - [2026-11-06 WebUI 用户管理](commits/2026-11-06-web-users-ui.md)
 - [2026-11-06 主题截图基线脚手架](commits/2026-11-06-visual-baseline-scaffold.md)
+- [2026-11-06 修复截图基线生成与视频 E2E 诊断](commits/2026-11-06-fix-visual-baseline-run.md)
 
 ## 决策记录（ADR）
 
