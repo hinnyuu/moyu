@@ -1,4 +1,4 @@
-# Rust Workspace（草稿）
+# Rust Workspace（v0.0.1）
 
 ## 1. 结论
 
@@ -54,17 +54,17 @@ web-sys = "..."
 
 ## 4. 常用命令
 
-文档中只记录命令，不在本项目目录执行；实现阶段使用：
+常用命令：
 
 ```text
-cargo check -p gateway
-cargo check -p wasm-client --target wasm32-unknown-unknown
-cargo build --release -p gateway --target x86_64-unknown-linux-musl
-wasm-pack build modules/wasm-client/rust --target web --release
+cargo check -p moyu-gateway
+cargo check -p moyu-wasm-client --target wasm32-unknown-unknown
+cargo build --release -p moyu-gateway --target x86_64-unknown-linux-musl
+cargo build -p moyu-wasm-client --target wasm32-unknown-unknown --release
+wasm-bindgen --target web --out-dir modules/web/app/public/wasm \
+  target/wasm32-unknown-unknown/release/moyu_wasm_client.wasm
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo deny check
-cargo audit
 ```
 
 ## 5. CI
@@ -72,10 +72,10 @@ cargo audit
 - 一个 workspace，一个 `Cargo.lock`。
 - CI 分 job：
   - gateway native check/test/build；
-  - wasm-client target check + wasm-pack；
-  - clippy/fmt/deny/audit；
+  - wasm-client target check + wasm-bindgen CLI；
+  - clippy/fmt/test；
   - 共享 cargo 缓存。
-- 发布镜像时只构建 gateway 二进制；WASM 产物单独打包进 Web 静态资源。
+- 发布镜像构建 gateway 二进制与 WASM 产物，Web 静态资源一并打包。
 - 不使用 Go 工具链。
 
 ## 6. 文档边界

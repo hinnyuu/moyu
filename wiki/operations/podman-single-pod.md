@@ -1,6 +1,6 @@
 # 操作：Podman 单 Pod 多容器
 
-本文是 v0.0.1 的部署草稿。端口、路径、证书都使用占位符；不要把示例端口当成固定值。实现阶段会根据实际配置补全。
+端口、路径、证书都使用占位符；不要把示例端口当成固定值。实际值来自部署环境变量与 `/config`。
 
 ## 1. 镜像与角色
 
@@ -34,7 +34,7 @@ Pod: moyu
 
 - 不启动 gateway。
 - 现有 Caddy 负责公网端口、TLS、证书。
-- Caddy 代理到 api/tusd；具体网络按你的 Caddy 部署决定。
+- Caddy 代理到 api；tusd 按需暴露 `/files/`，preview 只供 api 内部调用。
 
 ### Standalone TLS 模式
 
@@ -65,7 +65,7 @@ moyu-secrets:/run/secrets
 - `/run/secrets`：bootstrap token 等；gateway reload token 在 `/config/secrets/`，由 api 轮换、gateway 只读。
 - `/certs`：证书，只读。
 
-rootless Podman 注意 `:U`/`:Z` 和 SELinux；权限在实现阶段细化。
+rootless Podman 注意 `:U`/`:Z` 与 SELinux；数据/配置目录必须让容器用户（UID 1000）可读写，secret 目录只读。
 
 ## 4. 直接用 Podman 命令（示例）
 

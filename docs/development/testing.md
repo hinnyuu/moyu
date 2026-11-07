@@ -78,7 +78,7 @@
 
 - Rust `cargo deny` / `cargo audit`。
 - 真实后端联动的 Playwright、明暗主题截图基线与对比度自动检查。
-- >4GiB ZIP64、>65535 条目、服务重启续传等大文件/故障注入测试。
+- >4GiB 单文件、服务重启续传等大文件/故障注入测试；>65535 条目已覆盖。
 - aarch64 镜像构建与 smoke。
 
 ## 7. Agent-gate

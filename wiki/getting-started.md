@@ -41,5 +41,5 @@ Pod: moyu
 ## 当前状态
 
 - 核心打包链路、API、Web、gateway、deploy、wasm 核心已实现并有 CI。
-- preview 与 tusd 已是独立容器；HLS 尚未实现。
+- preview 与 tusd 已是独立容器；HLS 已实现；WASM 转码未实现。
 - 尚未创建 v0.0.1 标签。

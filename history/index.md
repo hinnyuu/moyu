@@ -45,6 +45,7 @@
 - [2026-11-06 ZIP64 65536 条目测试](commits/2026-11-06-zip64-entry-count.md)
 - [2026-11-06 arm64 Podman smoke CI](commits/2026-11-06-podman-arm64.md)
 - [2026-11-06 修复 arm64 WASM 构建的 GLIBC 依赖](commits/2026-11-06-fix-wasm-bindgen-glibc.md)
+- [2026-11-06 发布前文档三轮校对](commits/2026-11-06-docs-audit-round3.md)
 
 ## 决策记录（ADR）
 

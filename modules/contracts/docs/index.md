@@ -34,7 +34,7 @@ OpenAPI/JSON Schema 校验、版本兼容检查、生成客户端编译。
 
 ## 机械契约文件
 
-- `openapi/openapi.yaml`：应用 API 草稿。
+- `openapi/openapi.yaml`：应用 API 契约。
 - `schemas/pack-plan.schema.json`：PackPlan。
 - `schemas/metadata-report.schema.json`：元数据报告。
 - `schemas/job.schema.json`：任务模型。

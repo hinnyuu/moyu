@@ -14,4 +14,4 @@ contracts 是模块之间的“合同”。它不干活，但决定别的模块�
 
 ## 当前契约
 
-当前已有 `openapi/openapi.yaml` 和 JSON Schema 草稿。它们是模块之间的机器可读合同；修改前先写 ADR/history，并同步 docs。
+当前已有 `openapi/openapi.yaml` 和 JSON Schema。它们是模块之间的机器可读合同；修改前先写 ADR/history，并同步 docs。

@@ -1,4 +1,4 @@
-# 运行时拓扑（v0.0.1 草稿）
+# 运行时拓扑（v0.0.1）
 
 ## 1. 镜像
 
@@ -75,7 +75,7 @@ Pod: moyu
 ├─ assets/
 ├─ jobs/
 ├─ outputs/
-├─ previews/
+├─ preview/
 ├─ db/
 └─ secrets/
 /config/

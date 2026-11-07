@@ -32,7 +32,7 @@ systemctl start moyu-gateway.service
 
 ## 当前限制
 
-preview 仍在 api 进程内，tusd 尚未独立成容器；视频/EXR 预览未启用。详见 [模块 docs](../docs/index.md)。
+preview 与 tusd 已是独立容器；图片/视频/EXR/HLS 预览与 MP4 代理已接入。详见 [模块 docs](../docs/index.md)。
 
 ## 相关
 

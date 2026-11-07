@@ -10,12 +10,12 @@
 同一个镜像可以启动多个容器，只要给不同参数/入口：
 
 ```text
-ghcr.io/hinnyuu/moyu:0.0.1 api
-ghcr.io/hinnyuu/moyu:0.0.1 worker
-ghcr.io/hinnyuu/moyu:0.0.1 preview
+ghcr.io/hinnyuu/moyu:<version> api
+ghcr.io/hinnyuu/moyu:<version> worker
+ghcr.io/hinnyuu/moyu:<version> preview
 ```
 
-这三个容器共享只读镜像层，但进程和资源限制独立。
+这些容器共享只读镜像层，但进程和资源限制独立。
 
 ## 2. Podman pod
 

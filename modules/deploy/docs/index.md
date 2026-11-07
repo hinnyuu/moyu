@@ -34,7 +34,7 @@ modules/deploy/
 
 - Web 构建阶段：Node 编译 `modules/web/app`；
 - Gateway 构建阶段：Rust 编译 `moyu-gateway`；
-- WASM 构建阶段：`wasm-pack` 编译 `moyu-wasm-client` 到 Web 静态目录；
+- WASM 构建阶段：`cargo build` + `wasm-bindgen` CLI 编译 `moyu-wasm-client` 到 Web 静态目录；
 - 运行阶段：Python 3.12 + FastAPI/uvicorn/PyYAML/jsonschema/Pillow，包含全部模块源码、Web 静态产物和 gateway 二进制；
 - 入口：`moyu <gateway|api|worker>`。
 
@@ -101,7 +101,6 @@ python3 modules/deploy/scripts/process_e2e.py
 
 - 本沙箱没有 Podman，容器不能本地运行；镜像与 pod 由 amd64 CI 验证。
 
-- 未实现 GHCR 发布 workflow、SBOM/漏洞扫描、升级/回滚脚本。
 
 ## 发布
 
@@ -113,7 +112,7 @@ python3 modules/deploy/scripts/process_e2e.py
 4. Trivy 生成表格与 SARIF 报告；
 5. SBOM 与扫描报告附加到 GitHub Release。
 
-当前仅构建 amd64；aarch64 需在对应 runner/构建机执行。未实现镜像签名。
+`release` workflow 只构建 amd64；`podman-arm64` workflow 验证 arm64 镜像但不推送。未实现镜像签名。
 
 ## 失败模式
 

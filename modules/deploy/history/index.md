@@ -13,3 +13,4 @@
 - [2026-11-06 镜像增加 WASM 构建阶段](2026-11-06-wasm-stage.md)
 - [2026-11-06 发布与供应链](2026-11-06-release-supply-chain.md)
 - [2026-11-06 WASM 构建改用 cargo wasm-bindgen](2026-11-06-fix-wasm-glibc.md)
+- [2026-11-06 部署文档三轮校对](2026-11-06-docs-audit-round3.md)

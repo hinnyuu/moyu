@@ -15,7 +15,8 @@
 ├─ secrets/
 └─ state/
    ├─ last-known-good/
-   └─ backups/
+   ├─ backups/
+   └─ audit.db
 ```
 
 - 一个模块一个文件；根文件只放全局项。

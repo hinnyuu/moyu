@@ -5,9 +5,9 @@
 | 数据 | 位置 | 说明 |
 | --- | --- | --- |
 | 上传/资产/任务/输出 | `/data` | 业务文件 |
-| 预览缓存 | `/data/previews` | 可重建，可选备份 |
-| SQLite | `/data/db` | 任务、审计、用户 |
-| 运行配置 | `/config` | 运行配置、last-known-good |
+| 预览缓存 | `/data/preview` | 可重建，可选备份 |
+| SQLite | `/data/state.db` | 资产、任务、事件、上传会话 |
+| 运行配置 | `/config` | 运行配置、last-known-good、`state/audit.db` |
 | Secret | `/config/secrets` 或 `/run/secrets` | 权限收紧 |
 | 证书 | `/certs` | 由外部证书系统管理 |
 
