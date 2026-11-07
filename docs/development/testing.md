@@ -69,7 +69,7 @@
 
 - Python 单元测试与进程级 E2E：`python` workflow 遍历 `modules/*/tests`，然后运行 `process_e2e.py`。
 - Rust fmt/check/clippy/test/wasm target：`rust` workflow。
-- Web typecheck/Vitest/build/Playwright mock E2E：`web` workflow。
+- Web typecheck/Vitest/build/Playwright mock E2E：`web` workflow；真实 api/worker + Web 的 Playwright：`fullstack` workflow。
 - Podman 单镜像构建与五容器 smoke：`podman` workflow。
 - 发布：`v*` 标签触发 `release` workflow（GHCR + SBOM + Trivy）。
 - `agent-gate` 按 commit 检查。
@@ -77,7 +77,7 @@
 尚未接入：
 
 - Rust `cargo deny` / `cargo audit`。
-- 真实后端联动的 Playwright、明暗主题截图基线与对比度自动检查。
+- 明暗主题截图基线与对比度自动检查。
 - >4GiB 单文件、服务重启续传等大文件/故障注入测试；>65535 条目已覆盖。
 - aarch64 镜像构建与 smoke。
 

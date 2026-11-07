@@ -38,7 +38,7 @@
 
 - WASM 转码未实现；客户端只生成 STORE ZIP。
 - 仅 amd64 镜像；aarch64 未在 CI 构建/验证。
-- Playwright 已覆盖前端 mock E2E；真实后端联动、明暗主题截图基线与对比度自动检查未接入。
+- Playwright 已覆盖前端 mock E2E 与真实 api/worker 流程；明暗主题截图基线与对比度自动检查未接入。
 - `cargo deny` / `cargo audit` 未接入。
 - >4GiB 单文件与服务重启续传等故障注入测试未接入；>65535 条目已覆盖。
 - 网关 `watch` 文件监听未实现，使用轮询/管理 API。
