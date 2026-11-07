@@ -81,7 +81,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 - 权限 0600；gateway 每次请求读取文件；轮换后立即生效，无需重启；
 - WebUI/API 生成/轮换/撤销，明文只在轮换响应中展示一次；
 - 撤销 = 写入空文件或禁用 API；
-- 当前不维护 token 数据库元数据、最近使用与审计表，待补。
+- token 元数据与审计记录在 `config/state/gateway_token.db`：创建/轮换时间、最近使用、指纹、rotate/revoke/use 审计；不存明文。
 
 ## 5. 证书重载触发
 

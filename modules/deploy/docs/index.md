@@ -69,7 +69,7 @@ modules/deploy/
 - `storage.dataRoot` 使用 `/data`。
 - `preview.cacheDir` 使用 `/data/preview`。
 - `gateway.upstream.url` 必须指向 Pod 内 API，例如 `http://api:<api-port>`。
-- secret：`/run/secrets/bootstrap_token`、`/config/secrets/session-state.json`、`/config/secrets/session.secret`、`/config/secrets/gateway_reload_token`；tusd hook token 由部署环境变量提供。
+- secret：`/run/secrets/bootstrap_token`、`/config/secrets/session-state.json`、`/config/secrets/session.secret`、`/config/secrets/gateway_reload_token`；网关 token 元数据在 `config/state/gateway_token.db`；tusd hook token 由部署环境变量提供。
 
 ## 资源与安全
 

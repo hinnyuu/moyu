@@ -11,3 +11,4 @@
 - [2026-11-06 OpenAPI 增加配置审计](2026-11-06-openapi-config-audit.md)
 - [2026-11-06 契约文档校对](2026-11-06-docs-audit.md)
 - [2026-11-06 契约文档三轮校对](2026-11-06-docs-audit-round3.md)
+- [2026-11-06 OpenAPI token 审计](2026-11-06-token-audit.md)

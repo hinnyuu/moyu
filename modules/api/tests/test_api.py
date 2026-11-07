@@ -62,6 +62,9 @@ class FakeGatewayAdmin:
     def cert_status(self):
         return {"status": "ok", "cert_sha256": "deadbeef"}
 
+    def audit(self, limit=100):
+        return [{"action": "rotate", "limit": limit}]
+
 
 class ApiTests(unittest.TestCase):
     def setUp(self):
@@ -327,6 +330,10 @@ class ApiTests(unittest.TestCase):
         metadata = self.client.get("/api/v1/admin/gateway/token").json()
         self.assertTrue(metadata["exists"])
         self.assertNotIn("token", metadata)
+
+        audit = self.client.get("/api/v1/admin/gateway/token/audit?limit=5").json()
+        self.assertEqual(audit[0]["action"], "rotate")
+        self.assertEqual(audit[0]["limit"], 5)
 
         revoked = self.client.delete("/api/v1/admin/gateway/token", headers=headers)
         self.assertEqual(revoked.status_code, 204)

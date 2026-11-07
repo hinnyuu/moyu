@@ -18,3 +18,4 @@
 - [2026-11-06 fullstack E2E 日志与超时](2026-11-06-fix-fullstack-e2e.md)
 - [2026-11-06 API 重启续传 E2E](2026-11-06-restart-resume.md)
 - [2026-11-06 Web 构建包含 ffmpeg core](2026-11-06-ffmpeg-core.md)
+- [2026-11-06 token 审计库路径](2026-11-06-token-db.md)

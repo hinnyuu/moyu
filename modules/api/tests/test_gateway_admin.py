@@ -80,17 +80,28 @@ class GatewayAdminTests(unittest.TestCase):
         self.assertEqual(self.client.reload_cert()["status"], "reloaded")
 
     def test_rotate_metadata_revoke(self):
-        token = self.client.rotate_token()
+        token = self.client.rotate_token(actor="tester")
+        Handler.token = token
         self.assertTrue(token)
         metadata = self.client.token_metadata()
         self.assertTrue(metadata["exists"])
         self.assertEqual(metadata["bytes"], len(token))
+        self.assertEqual(len(metadata["fingerprint_sha256"]), 64)
+        self.assertIsNotNone(metadata["rotated_at"])
         mode = stat.S_IMODE(os.stat(self.token_file).st_mode)
         self.assertEqual(mode, 0o600)
 
-        self.client.revoke_token()
+        self.client.cert_status()
+        used = self.client.token_metadata()
+        self.assertIsNotNone(used["last_used_at"])
+
+        self.client.revoke_token(actor="tester")
         self.assertEqual(self.token_file.read_text(encoding="utf-8"), "")
         self.assertEqual(self.client.token_metadata()["bytes"], 0)
+        actions = [entry["action"] for entry in self.client.audit()]
+        self.assertIn("rotate", actions)
+        self.assertIn("cert_status", actions)
+        self.assertIn("revoke", actions)
 
     def test_missing_token_fails_before_http(self):
         self.token_file.write_text("", encoding="utf-8")

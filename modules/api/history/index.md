@@ -15,3 +15,4 @@
 - [2026-11-06 HLS 文件代理](2026-11-06-hls-proxy.md)
 - [2026-11-06 COOP/COEP 响应头](2026-11-06-coop-coep.md)
 - [2026-11-06 文档四轮校对](2026-11-06-docs-audit-round4.md)
+- [2026-11-06 token 元数据与审计](2026-11-06-token-metadata.md)

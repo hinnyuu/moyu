@@ -140,6 +140,9 @@ def create_app(
             gateway_admin = GatewayAdminClient(
                 reload_api.get("tokenFile", ""),
                 reload_api.get("listen", ""),
+                state_file=Path(config_provider.config_dir)
+                / "state"
+                / "gateway_token.db",
             )
     if tusd_hook_token is None:
         tusd_hook_token = os.environ.get("MOYU_TUSD_HOOK_TOKEN", "")
@@ -525,6 +528,12 @@ def create_app(
     @app.get("/api/v1/admin/gateway/token")
     async def gateway_token_status(session=Depends(current_session)):
         return require_gateway().token_metadata()
+
+    @app.get("/api/v1/admin/gateway/token/audit")
+    async def gateway_token_audit(
+        limit: int = 100, session=Depends(current_session)
+    ):
+        return require_gateway().audit(limit)
 
     @app.delete("/api/v1/admin/gateway/token", status_code=204)
     async def gateway_token_revoke(request: Request, session=Depends(current_session)):

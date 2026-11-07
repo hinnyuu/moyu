@@ -58,6 +58,7 @@
 - [2026-11-06 修复多容器同时初始化的 SQLite 锁](commits/2026-11-06-fix-sqlite-lock.md)
 - [2026-11-06 发布前文档四轮校对](commits/2026-11-06-docs-audit-round4.md)
 - [2026-11-06 网关 watch 与证书元数据](commits/2026-11-06-gateway-watch-cert-metadata.md)
+- [2026-11-06 网关 token 元数据与审计](commits/2026-11-06-token-metadata-audit.md)
 
 ## 决策记录（ADR）
 

@@ -9,6 +9,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from .token_store import TokenStore
+
 
 class GatewayAdminError(Exception):
     def __init__(self, code, message, details=None):
@@ -43,10 +45,23 @@ def _atomic_write(path: Path, text: str):
 
 
 class GatewayAdminClient:
-    def __init__(self, token_file, admin_listen, timeout=5):
+    def __init__(self, token_file, admin_listen, timeout=5, state_file=None):
         self.token_file = Path(token_file)
         self.base_url = f"http://{admin_listen}"
         self.timeout = timeout
+        if state_file:
+            self.state_file = Path(state_file)
+        else:
+            parent = self.token_file.parent
+            if parent.name == "secrets":
+                parent = parent.parent
+            self.state_file = parent / "state" / "gateway_token.db"
+        self._token_store = None
+
+    def _store(self):
+        if self._token_store is None:
+            self._token_store = TokenStore(self.state_file)
+        return self._token_store
 
     def _token(self):
         try:
@@ -91,27 +106,39 @@ class GatewayAdminClient:
             ) from exc
 
     def cert_status(self):
-        return self._request("GET", "/admin/cert/status")
+        result = self._request("GET", "/admin/cert/status")
+        self._store().mark_used("api", "cert_status")
+        return result
 
     def reload_cert(self):
-        return self._request("POST", "/admin/cert/reload")
+        result = self._request("POST", "/admin/cert/reload")
+        self._store().mark_used("api", "cert_reload")
+        return result
 
     def token_metadata(self):
         if not self.token_file.exists():
-            return {"exists": False, "bytes": 0, "modified_at": None}
-        stat = self.token_file.stat()
-        return {
-            "exists": True,
-            "bytes": stat.st_size,
-            "modified_at": dt.datetime.fromtimestamp(
-                stat.st_mtime, tz=dt.timezone.utc
-            ).isoformat(),
-        }
+            base = {"exists": False, "bytes": 0, "modified_at": None}
+        else:
+            stat = self.token_file.stat()
+            base = {
+                "exists": True,
+                "bytes": stat.st_size,
+                "modified_at": dt.datetime.fromtimestamp(
+                    stat.st_mtime, tz=dt.timezone.utc
+                ).isoformat(),
+            }
+        base.update(self._store().metadata())
+        return base
 
-    def rotate_token(self):
+    def rotate_token(self, actor="api"):
         token = secrets.token_urlsafe(32)
         _atomic_write(self.token_file, token)
+        self._store().rotate(token, actor)
         return token
 
-    def revoke_token(self):
+    def revoke_token(self, actor="api"):
         _atomic_write(self.token_file, "")
+        self._store().revoke(actor)
+
+    def audit(self, limit=100):
+        return self._store().audit(limit)
