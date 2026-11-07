@@ -96,14 +96,14 @@ npm run build
 - `npm run typecheck` 通过；
 - `npm run build` 通过；
 - `npm test`（Vitest）4 个队列测试：新建上传、断点续传、暂停、错误传播；
-- `npm run test:e2e`（Playwright）5 个前端 mock E2E：登录、WCAG AA（登录/任务页亮暗两套）、用户页、主题持久化、队列刷新恢复。
+- `npm run test:e2e`（Playwright）6 个前端 mock E2E：登录、WCAG AA（登录/任务页亮暗两套）、用户页、主题持久化、队列刷新恢复、主题截图基线。
 - `modules/deploy/scripts/fullstack_e2e.sh`：真实 api/worker + 构建后 Web 的 Playwright 流程（登录、上传、建任务、任务成功、主题、可选视频转码）。
 - 构建产物由 API 静态挂载后可访问（首页、JS、CSS 均为 200）。
+- 主题截图基线已生成并参与回归。
 
 尚未完成：
 
-- 明暗主题截图基线；
-- 亮/暗主题视觉回归截图基线；WASM/ffmpeg 产物由镜像构建，不在仓库提交。
+- WASM/ffmpeg 产物由镜像构建，不在仓库提交。
 
 ## 替换点
 
