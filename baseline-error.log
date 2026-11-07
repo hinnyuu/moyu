@@ -1,4 +1,8 @@
 
-Error: Timed out waiting 30000ms from config.webServer.
+> moyu-web@0.0.0-dev test:e2e
+> playwright test tests/e2e/smoke.e2e.ts -g theme screenshots --update-snapshots=all
+
+
+Error: Timed out waiting 60000ms from config.webServer.
 
 
