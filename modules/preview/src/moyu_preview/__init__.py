@@ -249,38 +249,47 @@ class PreviewProvider:
         started = time.monotonic()
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
-            with Image.open(self.assets.path_for(asset.id)) as image:
-                if ImageOps is not None:
-                    image = ImageOps.exif_transpose(image)
-                image.thumbnail(
-                    (normalized["maxWidth"], normalized["maxHeight"]), Image.LANCZOS
-                )
-                if normalized["format"] == "jpeg":
-                    if image.mode in ("RGBA", "LA", "P"):
-                        background = Image.new("RGB", image.size, (255, 255, 255))
-                        converted = image.convert("RGBA")
-                        background.paste(converted, mask=converted.split()[-1])
-                        image = background
+            try:
+                with Image.open(self.assets.path_for(asset.id)) as source:
+                    if ImageOps is not None:
+                        image = ImageOps.exif_transpose(source)
                     else:
-                        image = image.convert("RGB")
-                fd, tmp = tempfile.mkstemp(
-                    prefix=".moyu-preview-", suffix=".part", dir=target.parent
-                )
-                os.close(fd)
-                try:
-                    image.save(
-                        tmp,
-                        format=normalized["format"].upper(),
-                        quality=normalized["quality"],
+                        image = source.copy()
+                    image.load()
+                    image.thumbnail(
+                        (normalized["maxWidth"], normalized["maxHeight"]),
+                        Image.LANCZOS,
                     )
-                    os.replace(tmp, target)
-                    tmp = None
-                finally:
-                    if tmp and os.path.exists(tmp):
-                        try:
-                            os.unlink(tmp)
-                        except OSError:
-                            pass
+                    if normalized["format"] == "jpeg":
+                        if image.mode in ("RGBA", "LA", "P"):
+                            background = Image.new("RGB", image.size, (255, 255, 255))
+                            converted = image.convert("RGBA")
+                            background.paste(converted, mask=converted.split()[-1])
+                            image = background
+                        else:
+                            image = image.convert("RGB")
+                    fd, tmp = tempfile.mkstemp(
+                        prefix=".moyu-preview-", suffix=".part", dir=target.parent
+                    )
+                    os.close(fd)
+                    try:
+                        image.save(
+                            tmp,
+                            format=normalized["format"].upper(),
+                            quality=normalized["quality"],
+                        )
+                        os.replace(tmp, target)
+                        tmp = None
+                    finally:
+                        if tmp and os.path.exists(tmp):
+                            try:
+                                os.unlink(tmp)
+                            except OSError:
+                                pass
+            except (OSError, ValueError) as exc:
+                raise PreviewError(
+                    "preview_failed", f"图像解码/编码失败: {exc}"
+                ) from exc
             if time.monotonic() - started > self.timeout_seconds:
                 target.unlink(missing_ok=True)
                 raise PreviewError("preview_timeout", "预览生成超时")

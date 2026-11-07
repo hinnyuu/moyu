@@ -61,6 +61,14 @@ class PreviewServiceTests(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["code"], "asset_not_found")
 
+    def test_corrupt_image_returns_415(self):
+        root = Path(self.tmp.name)
+        bad = root / "bad.png"
+        bad.write_bytes(b"not a png")
+        asset = AssetStore(self.storage).register_asset(bad, original_name="bad.png")
+        response = self.client.get(f"/preview/{asset.id}/thumb")
+        self.assertEqual(response.status_code, 415)
+
     def test_missing_preview_file(self):
         response = self.client.get(f"/preview/{self.asset.id}/thumb/missing.ts")
         self.assertEqual(response.status_code, 404)

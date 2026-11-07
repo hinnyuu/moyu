@@ -18,7 +18,7 @@ test("real backend upload, pack and theme", async ({ page }) => {
     name: "frame.png",
     mimeType: "image/png",
     buffer: Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lK3Q6wAAAABJRU5ErkJggg==",
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGM4IScHAAK2AQU0pnWqAAAAAElFTkSuQmCC",
       "base64",
     ),
   });
@@ -36,7 +36,7 @@ test("real backend upload, pack and theme", async ({ page }) => {
   await page.locator("#asset").selectOption({ index: 1 });
   await page.getByRole("button", { name: "创建任务" }).click();
   await expect(page.locator(".success")).toContainText("已创建", { timeout: 20_000 });
-  await page.getByRole("button", { name: "任务" }).click();
+  await page.getByRole("button", { name: "任务", exact: true }).click();
   await expect(page.locator("tbody .badge").first()).toHaveText("succeeded", {
     timeout: 40_000,
   });
