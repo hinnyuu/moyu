@@ -30,7 +30,11 @@ RUN apt-get update \
 RUN curl -fsSL "https://github.com/tus/tusd/releases/download/v${TUSD_VERSION}/tusd_linux_${TARGETARCH}.tar.gz" \
   -o /tmp/tusd.tar.gz \
   && tar -xzf /tmp/tusd.tar.gz -C /tmp \
-  && install -m 0755 /tmp/tusd /usr/local/bin/tusd
+  && BIN="$(find /tmp -maxdepth 3 -type f \
+       \( -name 'tusd' -o -name 'tusd_*' \) ! -name '*.tar.gz' | head -n1)" \
+  && test -n "$BIN" \
+  && install -m 0755 "$BIN" /usr/local/bin/tusd \
+  && rm -f /tmp/tusd.tar.gz
 
 FROM python:${PYTHON_VERSION}-slim-bookworm
 

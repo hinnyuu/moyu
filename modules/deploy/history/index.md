@@ -9,3 +9,4 @@
 - [2026-11-06 同步网关 token 路径](2026-11-06-token-path.md)
 - [2026-11-06 preview 容器与媒体工具](2026-11-06-preview-container.md)
 - [2026-11-06 tusd 容器](2026-11-06-tusd-container.md)
+- [2026-11-06 修复 tusd 构建路径](2026-11-06-fix-tusd-build.md)
