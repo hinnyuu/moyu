@@ -47,6 +47,7 @@
 - [2026-11-06 修复 arm64 WASM 构建的 GLIBC 依赖](commits/2026-11-06-fix-wasm-bindgen-glibc.md)
 - [2026-11-06 发布前文档三轮校对](commits/2026-11-06-docs-audit-round3.md)
 - [2026-11-06 真实后端 Playwright E2E](commits/2026-11-06-fullstack-playwright.md)
+- [2026-11-06 修复 fullstack E2E 超时](commits/2026-11-06-fix-fullstack-e2e.md)
 
 ## 决策记录（ADR）
 

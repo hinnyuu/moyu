@@ -5,6 +5,7 @@ export default defineConfig({
   ...base,
   testDir: "./tests/fullstack",
   testMatch: "**/*.fullstack.ts",
+  timeout: 90_000,
   webServer: undefined,
   use: {
     ...base.use,

@@ -43,9 +43,9 @@ MOYU_API_LISTEN="127.0.0.1:$PORT" \
 MOYU_BOOTSTRAP_TOKEN_FILE="$TMP/secrets/bootstrap_token" \
 MOYU_SESSION_STATE_FILE="$TMP/config/secrets/session-state.json" \
 MOYU_SESSION_SECRET_FILE="$TMP/config/secrets/session.secret" \
-  python3 -m moyu_api >"$API_LOG" 2>&1 &
+  PYTHONUNBUFFERED=1 python3 -m moyu_api >"$API_LOG" 2>&1 &
 API_PID=$!
-MOYU_CONFIG_DIR="$TMP/config" python3 -m moyu_worker >"$WORKER_LOG" 2>&1 &
+MOYU_CONFIG_DIR="$TMP/config" PYTHONUNBUFFERED=1 python3 -m moyu_worker >"$WORKER_LOG" 2>&1 &
 WORKER_PID=$!
 
 for _ in $(seq 1 60); do

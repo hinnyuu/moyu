@@ -32,6 +32,8 @@ test("real backend upload, pack and theme", async ({ page }) => {
     timeout: 30_000,
   });
 
+  await expect(page.getByRole("heading", { name: "创建打包任务" })).toBeVisible();
+  await page.locator("#asset").selectOption({ index: 1 });
   await page.getByRole("button", { name: "创建任务" }).click();
   await expect(page.locator(".success")).toContainText("已创建", { timeout: 20_000 });
   await page.getByRole("button", { name: "任务" }).click();
