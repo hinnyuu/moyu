@@ -10,6 +10,7 @@ wiki: wiki/index.md
 tests:
   - bin/moyu
   - scripts/process_e2e.py
+  - scripts/restart_resume_e2e.py
   - scripts/fullstack_e2e.sh
   - scripts/podman_smoke.sh
   - scripts/make_smoke_config.py

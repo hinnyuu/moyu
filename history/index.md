@@ -50,6 +50,7 @@
 - [2026-11-06 修复 fullstack E2E 超时](commits/2026-11-06-fix-fullstack-e2e.md)
 - [2026-11-06 修复 fullstack E2E 的预览 500 与选择器冲突](commits/2026-11-06-fix-fullstack-preview.md)
 - [2026-11-06 WCAG AA 自动检查](commits/2026-11-06-wcag-axe.md)
+- [2026-11-06 API 重启续传 E2E](commits/2026-11-06-restart-resume-e2e.md)
 
 ## 决策记录（ADR）
 

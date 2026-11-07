@@ -16,3 +16,4 @@
 - [2026-11-06 部署文档三轮校对](2026-11-06-docs-audit-round3.md)
 - [2026-11-06 fullstack E2E 脚本](2026-11-06-fullstack-e2e.md)
 - [2026-11-06 fullstack E2E 日志与超时](2026-11-06-fix-fullstack-e2e.md)
+- [2026-11-06 API 重启续传 E2E](2026-11-06-restart-resume.md)
