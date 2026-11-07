@@ -61,6 +61,7 @@
 - [2026-11-06 网关 token 元数据与审计](commits/2026-11-06-token-metadata-audit.md)
 - [2026-11-06 多用户、密码重置与登录限流](commits/2026-11-06-auth-users-rate-limit.md)
 - [2026-11-06 修复 Podman smoke 误报容器未运行](commits/2026-11-06-fix-podman-smoke-check.md)
+- [2026-11-06 cargo-deny / cargo-audit 接入](commits/2026-11-06-cargo-deny-audit.md)
 
 ## 决策记录（ADR）
 

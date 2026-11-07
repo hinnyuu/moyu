@@ -71,12 +71,12 @@
 - Rust fmt/check/clippy/test/wasm target：`rust` workflow。
 - Web typecheck/Vitest/build/Playwright mock E2E（含 axe WCAG AA 亮/暗）：`web` workflow；真实 api/worker + Web 的 Playwright：`fullstack` workflow。
 - Podman 单镜像构建与五容器 smoke：`podman` workflow。
+- 供应链：`supply-chain` workflow 运行 cargo-deny 与 cargo-audit。
 - 发布：`v*` 标签触发 `release` workflow（GHCR + SBOM + Trivy）。
 - `agent-gate` 按 commit 检查。
 
 尚未接入：
 
-- Rust `cargo deny` / `cargo audit`。
 - 明暗主题截图基线；
 - 更多故障注入测试；>4GiB 单文件、>65535 条目与服务重启续传已覆盖。
 - aarch64 镜像构建与 smoke。
