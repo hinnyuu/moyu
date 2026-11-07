@@ -40,11 +40,7 @@ test("real backend upload, pack and theme", async ({ page }) => {
   page.on("pageerror", (error) => errors.push(String(error)));
   await page.goto("/");
   expect(await page.evaluate(() => window.crossOriginIsolated)).toBe(true);
-  await expect(page.getByRole("heading", { name: "moyu" })).toBeVisible();
-  await page.locator("#bootstrap").fill(bootstrap);
-  await page.locator("#password").fill(password);
-  await page.getByRole("button", { name: "初始化并登录" }).click();
-  await expect(page.getByRole("button", { name: "任务" })).toBeVisible();
+  await login(page);
 
   await page.getByRole("button", { name: "上传", exact: true }).click();
   await page.locator("input[type=file]").setInputFiles({

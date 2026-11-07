@@ -86,4 +86,5 @@
 
 - 尚无。v0.0.1 尚未创建。
 - [2026-11-06 发布候选文档收敛](commits/2026-11-06-release-candidate-docs.md)
+- [2026-11-06 修复 fullstack 视频入口与测试隔离](commits/2026-11-06-fix-fullstack-video-ui.md)
 - [2026-11-06 cargo-deny 改为 licenses/bans/sources](commits/2026-11-06-supply-chain-scope.md)

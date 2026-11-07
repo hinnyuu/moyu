@@ -331,6 +331,32 @@ export function UploadPage() {
         )}
       </section>
 
+      {ffmpegSupported() && (
+        <section className="card">
+          <h2>本地视频转码</h2>
+          <p className="hint">
+            使用 ffmpeg.wasm 将首个队列视频缩放为 MP4；失败时回退服务端。
+          </p>
+          <div className="row">
+            <button
+              className="btn"
+              onClick={() => void buildLocalVideo()}
+              disabled={items.length === 0 || busy !== ""}
+            >
+              本地视频转码
+            </button>
+          </div>
+          {error && <div className="error" style={{ marginTop: 12 }}>{error}</div>}
+          {localVideo && (
+            <video
+              src={localVideo}
+              controls
+              style={{ width: "100%", maxHeight: 360, marginTop: 12, borderRadius: 10 }}
+            />
+          )}
+        </section>
+      )}
+
       {wasmReady && (
         <section className="card">
           <h2>客户端 ZIP（可选）</h2>
@@ -352,27 +378,12 @@ export function UploadPage() {
             >
               本地预览转码
             </button>
-            <button
-              className="btn"
-              onClick={() => void buildLocalVideo()}
-              disabled={items.length === 0 || busy !== "" || !ffmpegSupported()}
-              title={ffmpegSupported() ? "" : "需要 COOP/COEP 跨源隔离"}
-            >
-              本地视频转码
-            </button>
             <span className="muted mono">{wasmInfo}</span>
           </div>
           {localPreview && (
             <div className="media-preview" style={{ marginTop: 12 }}>
               <img src={localPreview} alt="WASM 转码预览" />
             </div>
-          )}
-          {localVideo && (
-            <video
-              src={localVideo}
-              controls
-              style={{ width: "100%", maxHeight: 360, marginTop: 12, borderRadius: 10 }}
-            />
           )}
           {clientZip && <div className="success" style={{ marginTop: 12 }}>{clientZip}</div>}
         </section>

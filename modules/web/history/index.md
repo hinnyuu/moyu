@@ -26,3 +26,4 @@
 - [2026-11-06 截图基线手动 preview](2026-11-06-visual-manual-preview.md)
 - [2026-11-06 preview 监听地址](2026-11-06-visual-preview-host.md)
 - [2026-11-06 发布候选文档](2026-11-06-release-docs.md)
+- [2026-11-06 视频转码入口与测试登录](2026-11-06-video-ui-fix.md)
