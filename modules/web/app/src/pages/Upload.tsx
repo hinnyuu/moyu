@@ -12,6 +12,7 @@ import {
 } from "../queue";
 import type { QueueItem } from "../queue";
 import { formatError } from "./Login";
+import { packLocally, wasmCapabilities } from "../wasm";
 
 function defaultTarget(): string {
   const value = new Date(Date.now() + 10 * 60 * 1000);
@@ -29,11 +30,24 @@ export function UploadPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState("");
   const [previewReady, setPreviewReady] = useState(true);
+  const [wasmReady, setWasmReady] = useState(false);
+  const [wasmInfo, setWasmInfo] = useState("");
+  const [clientZip, setClientZip] = useState("");
   const pauseRef = useRef(false);
   const timezone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
     [],
   );
+
+  useEffect(() => {
+    void (async () => {
+      const caps = await wasmCapabilities();
+      if (caps) {
+        setWasmReady(true);
+        setWasmInfo(caps);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     const restored = loadQueue().map((item) =>
@@ -121,6 +135,34 @@ export function UploadPage() {
     await deleteBlob(item.id);
     persist(items.filter((entry) => entry.id !== item.id));
     if (selected === item.assetId) setSelected("");
+  }
+
+  async function buildClientZip() {
+    setError("");
+    setClientZip("");
+    const packed = [];
+    for (const item of items) {
+      const blob = await getBlob(item.id);
+      if (!blob) continue;
+      packed.push({ name: item.name, lastModified: item.lastModified, blob });
+    }
+    if (!packed.length) {
+      setError("队列中没有可打包的文件");
+      return;
+    }
+    const epoch = Math.floor(new Date(target).getTime() / 1000);
+    const zip = await packLocally(packed, epoch);
+    if (!zip) {
+      setError("WASM 客户端不可用");
+      return;
+    }
+    const url = URL.createObjectURL(zip);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "moyu-client.zip";
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setClientZip(`已生成 ${packed.length} 个条目的客户端 ZIP（仅 DOS 时间）`);
   }
 
   const done = items.filter((item) => item.status === "done" && item.assetId);
@@ -246,6 +288,26 @@ export function UploadPage() {
           </table>
         )}
       </section>
+
+      {wasmReady && (
+        <section className="card">
+          <h2>客户端 ZIP（可选）</h2>
+          <p className="hint">
+            使用 WASM 在浏览器本地生成 STORE ZIP，只写 DOS mtime，不修改文件内部元数据。
+          </p>
+          <div className="row">
+            <button
+              className="btn"
+              onClick={() => void buildClientZip()}
+              disabled={items.length === 0 || busy !== ""}
+            >
+              本地生成 ZIP
+            </button>
+            <span className="muted mono">{wasmInfo}</span>
+          </div>
+          {clientZip && <div className="success" style={{ marginTop: 12 }}>{clientZip}</div>}
+        </section>
+      )}
 
       {done.length > 0 && (
         <section className="card">

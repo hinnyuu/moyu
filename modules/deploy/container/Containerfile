@@ -21,6 +21,19 @@ COPY modules/gateway/rust modules/gateway/rust
 COPY modules/wasm-client/rust modules/wasm-client/rust
 RUN cargo build --release -p moyu-gateway
 
+FROM rust:${RUST_VERSION}-slim-bookworm AS wasm
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl \
+  && rm -rf /var/lib/apt/lists/*
+RUN rustup target add wasm32-unknown-unknown \
+  && curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+WORKDIR /src
+COPY Cargo.toml Cargo.lock ./
+COPY modules/core-time/rust modules/core-time/rust
+COPY modules/gateway/rust modules/gateway/rust
+COPY modules/wasm-client/rust modules/wasm-client/rust
+RUN wasm-pack build modules/wasm-client/rust --target web --out-dir /wasm-out
+
 FROM debian:bookworm-slim AS tusd
 ARG TUSD_VERSION
 ARG TARGETARCH
@@ -53,6 +66,7 @@ RUN python3 -m pip install --no-cache-dir \
 COPY --from=gateway /src/target/release/moyu-gateway /usr/local/bin/moyu-gateway
 COPY --from=tusd /usr/local/bin/tusd /usr/local/bin/tusd
 COPY --from=web /src/modules/web/app/dist /opt/moyu/web
+COPY --from=wasm /wasm-out /opt/moyu/web/wasm
 COPY modules /opt/moyu/modules
 COPY modules/deploy/bin/moyu /usr/local/bin/moyu
 

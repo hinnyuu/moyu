@@ -34,6 +34,7 @@ modules/deploy/
 
 - Web 构建阶段：Node 编译 `modules/web/app`；
 - Gateway 构建阶段：Rust 编译 `moyu-gateway`；
+- WASM 构建阶段：`wasm-pack` 编译 `moyu-wasm-client` 到 Web 静态目录；
 - 运行阶段：Python 3.12 + FastAPI/uvicorn/PyYAML/jsonschema/Pillow，包含全部模块源码、Web 静态产物和 gateway 二进制；
 - 入口：`moyu <gateway|api|worker>`。
 

@@ -6,3 +6,5 @@ __pycache__/
 node_modules/
 modules/web/app/dist/
 *.tsbuildinfo
+modules/web/app/public/wasm/
+

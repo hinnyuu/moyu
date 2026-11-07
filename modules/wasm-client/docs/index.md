@@ -47,7 +47,9 @@ WASM 绑定（`cfg(target_arch = "wasm32")`）：
 
 - `PackBuilder`：`new()`、`add_file(name, mtime_ns, data)`、`finish(target_epoch, utc_offset_seconds)`；
 - `capabilities()`：返回 JSON 字符串（STORE、DOS-only、上限）；
-- 需要 `wasm-bindgen` 生成 JS glue；当前未提供打包好的 `.wasm`/`.js` 产物。
+- 需要 `wasm-bindgen` 生成 JS glue；镜像 `wasm` 阶段用 `wasm-pack --target web` 生成到 `/opt/moyu/web/wasm`。
+- 本地构建脚本：`modules/web/app/scripts/build-wasm.sh`（需要 wasm-pack），输出到 `public/wasm/`（不提交）。
+- Web 动态加载 `/wasm/moyu_wasm_client.js`；i64 参数在 JS 侧使用 `BigInt`。
 
 限制：
 
