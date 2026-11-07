@@ -9,3 +9,4 @@ modules/web/app/dist/
 modules/web/app/public/wasm/
 modules/web/app/test-results/
 modules/web/app/playwright-report/
+modules/web/app/public/ffmpeg/

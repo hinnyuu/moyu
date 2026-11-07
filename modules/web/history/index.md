@@ -16,3 +16,4 @@
 - [2026-11-06 修复 fullstack 测试数据与选择器](2026-11-06-fix-fullstack-data.md)
 - [2026-11-06 WCAG AA 检查](2026-11-06-wcag-axe.md)
 - [2026-11-06 WASM 本地预览转码](2026-11-06-wasm-transcode.md)
+- [2026-11-06 ffmpeg.wasm 视频转码](2026-11-06-ffmpeg-wasm.md)

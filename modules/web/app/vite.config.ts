@@ -5,6 +5,13 @@ const proxy = process.env.VITE_API_PROXY;
 
 export default defineConfig({
   plugins: [react()],
-  server: proxy ? { proxy: { "/api": proxy } } : undefined,
+  server: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
+    ...(proxy ? { proxy: { "/api": proxy } } : {}),
+  },
+  optimizeDeps: { exclude: ["@ffmpeg/ffmpeg", "@ffmpeg/util"] },
   build: { outDir: "dist", sourcemap: false },
 });

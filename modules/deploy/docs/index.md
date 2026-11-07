@@ -35,6 +35,7 @@ modules/deploy/
 - Web 构建阶段：Node 编译 `modules/web/app`；
 - Gateway 构建阶段：Rust 编译 `moyu-gateway`；
 - WASM 构建阶段：`cargo build` + `wasm-bindgen` CLI 编译 `moyu-wasm-client` 到 Web 静态目录；
+- Web 构建前复制 ffmpeg.wasm core（约 31MB）到 `dist/ffmpeg/`，镜像体积相应增加；
 - 运行阶段：Python 3.12 + FastAPI/uvicorn/PyYAML/jsonschema/Pillow，包含全部模块源码、Web 静态产物和 gateway 二进制；
 - 入口：`moyu <gateway|api|worker>`。
 

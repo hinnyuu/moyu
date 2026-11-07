@@ -239,6 +239,13 @@ def create_app(
                 )
         return await call_next(request)
 
+    @app.middleware("http")
+    async def cross_origin_isolation(request: Request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+        response.headers.setdefault("Cross-Origin-Embedder-Policy", "require-corp")
+        return response
+
     @app.get("/api/v1/health")
     async def health():
         return {"status": "ok", "configured": auth.is_configured()}

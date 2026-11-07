@@ -61,8 +61,11 @@ app/
 - 登录：未初始化时显示 bootstrap token + 设置密码；已初始化时只显示密码。
 - 任务：每 5 秒轮询，显示状态/进度/错误，可取消未完成任务。
 - 上传：多文件队列、分片 8MiB、IndexedDB 缓存、刷新后按服务器偏移量续传、暂停/恢复；完成后可选择资产创建打包任务。
+- COOP/COEP：API 与 Vite dev 均返回 `Cross-Origin-Opener-Policy: same-origin`、`Cross-Origin-Embedder-Policy: require-corp`。
 - 客户端 ZIP：检测到 `/wasm/moyu_wasm_client.js` 时启用，可在浏览器本地生成 STORE ZIP（仅 DOS mtime）；不可用时隐藏。
-- 本地预览转码：使用 WASM 将首个队列图片缩放为 JPEG 预览；仅图片，失败时提示回退服务端。
+- 本地图片转码：Rust WASM 将首个队列图片缩放为 JPEG 预览；仅图片。
+- 本地视频转码：`ffmpeg.wasm` 将首个队列视频缩放到 MP4；需要 COOP/COEP 跨源隔离，失败时提示回退服务端。
+- ffmpeg core 由 `scripts/copy-ffmpeg.mjs` 在 build 前复制到 `public/ffmpeg/`（约 31MB），不提交仓库。
 - HLS 预览：视频资产可点开播放器，`hls.js` 动态加载；原生支持 HLS 的浏览器走原生路径。
 - 配置：按模块编辑 JSON，保存时带 revision；显示 LKG 降级警告。
 

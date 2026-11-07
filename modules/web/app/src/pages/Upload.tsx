@@ -14,6 +14,7 @@ import type { QueueItem } from "../queue";
 import { formatError } from "./Login";
 import { HlsPreview } from "../components/HlsPreview";
 import { packLocally, transcodeImage, wasmCapabilities } from "../wasm";
+import { ffmpegSupported, transcodeVideo } from "../ffmpeg";
 
 function defaultTarget(): string {
   const value = new Date(Date.now() + 10 * 60 * 1000);
@@ -35,6 +36,7 @@ export function UploadPage() {
   const [wasmInfo, setWasmInfo] = useState("");
   const [clientZip, setClientZip] = useState("");
   const [localPreview, setLocalPreview] = useState("");
+  const [localVideo, setLocalVideo] = useState("");
   const pauseRef = useRef(false);
   const timezone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -156,6 +158,25 @@ export function UploadPage() {
     }
     if (localPreview) URL.revokeObjectURL(localPreview);
     setLocalPreview(URL.createObjectURL(converted));
+  }
+
+  async function buildLocalVideo() {
+    setError("");
+    setClientZip("");
+    const first = items[0];
+    if (!first) return;
+    const blob = await getBlob(first.id);
+    if (!blob) {
+      setError("本地文件缓存丢失");
+      return;
+    }
+    try {
+      const converted = await transcodeVideo(blob, first.name, 640, 360);
+      if (localVideo) URL.revokeObjectURL(localVideo);
+      setLocalVideo(URL.createObjectURL(converted));
+    } catch (caught) {
+      setError(formatError(caught));
+    }
   }
 
   async function buildClientZip() {
@@ -331,12 +352,27 @@ export function UploadPage() {
             >
               本地预览转码
             </button>
+            <button
+              className="btn"
+              onClick={() => void buildLocalVideo()}
+              disabled={items.length === 0 || busy !== "" || !ffmpegSupported()}
+              title={ffmpegSupported() ? "" : "需要 COOP/COEP 跨源隔离"}
+            >
+              本地视频转码
+            </button>
             <span className="muted mono">{wasmInfo}</span>
           </div>
           {localPreview && (
             <div className="media-preview" style={{ marginTop: 12 }}>
               <img src={localPreview} alt="WASM 转码预览" />
             </div>
+          )}
+          {localVideo && (
+            <video
+              src={localVideo}
+              controls
+              style={{ width: "100%", maxHeight: 360, marginTop: 12, borderRadius: 10 }}
+            />
           )}
           {clientZip && <div className="success" style={{ marginTop: 12 }}>{clientZip}</div>}
         </section>

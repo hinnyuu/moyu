@@ -118,6 +118,8 @@ class ApiTests(unittest.TestCase):
         health = self.client.get("/api/v1/health")
         self.assertEqual(health.status_code, 200)
         self.assertFalse(health.json()["configured"])
+        self.assertEqual(health.headers["cross-origin-opener-policy"], "same-origin")
+        self.assertEqual(health.headers["cross-origin-embedder-policy"], "require-corp")
 
         unauthenticated = self.client.get("/api/v1/config")
         self.assertEqual(unauthenticated.status_code, 401)
