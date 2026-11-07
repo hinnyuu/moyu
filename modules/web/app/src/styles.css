@@ -330,6 +330,22 @@ textarea:disabled {
   color: var(--danger);
 }
 
+.badge.uploading {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.badge.paused,
+.badge.pending {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.badge.error {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .badge.running,
 .badge.verifying,
 .badge.queued {

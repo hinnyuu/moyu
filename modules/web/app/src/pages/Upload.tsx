@@ -1,10 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { api } from "../api";
-import type { Asset, Job } from "../api";
+import type { Job } from "../api";
+import {
+  createQueueItems,
+  deleteBlob,
+  getBlob,
+  loadQueue,
+  saveQueue,
+  uploadItem,
+} from "../queue";
+import type { QueueItem } from "../queue";
 import { formatError } from "./Login";
-
-const CHUNK_SIZE = 8 * 1024 * 1024;
 
 function defaultTarget(): string {
   const value = new Date(Date.now() + 10 * 60 * 1000);
@@ -15,61 +22,125 @@ function defaultTarget(): string {
 }
 
 export function UploadPage() {
-  const [file, setFile] = useState<File | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [asset, setAsset] = useState<Asset | null>(null);
-  const [job, setJob] = useState<Job | null>(null);
+  const [items, setItems] = useState<QueueItem[]>([]);
+  const [busy, setBusy] = useState("");
   const [target, setTarget] = useState(defaultTarget());
-  const [pending, setPending] = useState(false);
+  const [selected, setSelected] = useState("");
+  const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState("");
   const [previewReady, setPreviewReady] = useState(true);
-
+  const pauseRef = useRef(false);
   const timezone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
     [],
   );
 
-  function pick(event: ChangeEvent<HTMLInputElement>) {
-    setFile(event.target.files?.[0] ?? null);
-    setAsset(null);
-    setJob(null);
-    setProgress(0);
-    setPreviewReady(true);
+  useEffect(() => {
+    const restored = loadQueue().map((item) =>
+      item.status === "uploading"
+        ? { ...item, status: "paused" as const }
+        : item,
+    );
+    setItems(restored);
+    saveQueue(restored);
+  }, []);
+
+  function persist(next: QueueItem[]) {
+    setItems(next);
+    saveQueue(next);
   }
 
-  async function upload() {
-    if (!file) return;
-    setPending(true);
+  function patch(id: string, changes: Partial<QueueItem>) {
+    setItems((current) => {
+      const next = current.map((item) =>
+        item.id === id ? { ...item, ...changes } : item,
+      );
+      saveQueue(next);
+      return next;
+    });
+  }
+
+  async function addFiles(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (!files.length) return;
     setError("");
-    setAsset(null);
-    setJob(null);
-    setProgress(0);
     try {
-      const session = await api.createUpload(file.name, file.size, file.type);
-      let offset = session.offset;
-      while (offset < file.size) {
-        const chunk = file.slice(offset, offset + CHUNK_SIZE);
-        offset = await api.appendChunk(session.id, offset, chunk);
-        setProgress(Math.round((offset / file.size) * 100));
-      }
-      const finished = await api.finishUpload(session.id);
-      setAsset(finished);
-      setProgress(100);
+      const created = await createQueueItems(files);
+      setItems((current) => {
+        const next = [...current, ...created];
+        saveQueue(next);
+        return next;
+      });
     } catch (caught) {
       setError(formatError(caught));
-    } finally {
-      setPending(false);
     }
   }
 
+  async function start(item: QueueItem): Promise<boolean> {
+    const blob = await getBlob(item.id);
+    if (!blob) {
+      patch(item.id, { status: "error", error: "本地文件缓存丢失，请重新添加" });
+      return false;
+    }
+    pauseRef.current = false;
+    try {
+      const result = await uploadItem(item, blob, api, {
+        onUpdate: (next) => patch(next.id, next),
+        shouldPause: () => pauseRef.current,
+      });
+      patch(result.id, result);
+      return result.status === "done";
+    } catch (caught) {
+      patch(item.id, { status: "error", error: formatError(caught) });
+      return false;
+    }
+  }
+
+  async function startAll() {
+    setBusy("all");
+    setError("");
+    const queue = items.filter(
+      (item) => item.status === "pending" || item.status === "paused" || item.status === "error",
+    );
+    for (const item of queue) {
+      if (pauseRef.current) break;
+      await start(item);
+    }
+    setBusy("");
+  }
+
+  async function runOne(item: QueueItem) {
+    setBusy(item.id);
+    setError("");
+    await start(item);
+    setBusy("");
+  }
+
+  async function remove(item: QueueItem) {
+    await deleteBlob(item.id);
+    persist(items.filter((entry) => entry.id !== item.id));
+    if (selected === item.assetId) setSelected("");
+  }
+
+  const done = items.filter((item) => item.status === "done" && item.assetId);
+  const selectedItem = done.find((item) => item.assetId === selected);
+  const progress = (item: QueueItem) =>
+    item.size > 0 ? Math.round((item.offset / item.size) * 100) : 0;
+
   async function createJob() {
-    if (!asset) return;
-    setPending(true);
+    if (!selected) return;
+    setBusy("job");
     setError("");
     try {
       const epoch = Math.floor(new Date(target).getTime() / 1000);
       const created = await api.createJob({
-        inputs: [{ asset_id: asset.id, arcname: asset.original_name }],
+        inputs: [
+          {
+            asset_id: selected,
+            arcname: selectedItem?.name ?? "upload.bin",
+          },
+        ],
         target_epoch: epoch,
         timezone,
         output_name: "delivery.zip",
@@ -78,63 +149,141 @@ export function UploadPage() {
     } catch (caught) {
       setError(formatError(caught));
     } finally {
-      setPending(false);
+      setBusy("");
     }
   }
 
   return (
     <div className="stack">
       <section className="card">
-        <h2>上传文件</h2>
-        <p className="hint">
-          分片上传，完成后登记为资产；随后可以按目标时间创建打包任务。
-        </p>
-        <div className="row">
-          <div className="field">
-            <label htmlFor="file">选择文件</label>
-            <input id="file" type="file" onChange={pick} disabled={pending} />
+        <div className="row" style={{ marginBottom: 12 }}>
+          <div>
+            <h2>上传队列</h2>
+            <p className="hint">
+              文件保存在浏览器 IndexedDB；刷新后可继续从服务器偏移量续传。
+            </p>
           </div>
+          <div className="spacer" />
+          <label className="btn btn-primary">
+            添加文件
+            <input
+              type="file"
+              multiple
+              onChange={(event) => void addFiles(event)}
+              style={{ display: "none" }}
+            />
+          </label>
           <button
-            className="btn btn-primary"
-            onClick={() => void upload()}
-            disabled={!file || pending}
+            className="btn"
+            onClick={() => void startAll()}
+            disabled={busy !== "" || items.length === 0}
           >
-            {pending ? "处理中…" : "上传"}
+            开始/恢复全部
+          </button>
+          <button
+            className="btn"
+            onClick={() => {
+              pauseRef.current = true;
+            }}
+            disabled={busy === ""}
+          >
+            暂停
           </button>
         </div>
-        {progress > 0 && (
-          <div className="row" style={{ marginTop: 12 }}>
-            <div className="progress" style={{ flex: 1 }}>
-              <span style={{ width: `${progress}%` }} />
-            </div>
-            <span className="muted mono">{progress}%</span>
-          </div>
+        {error && <div className="error" style={{ marginBottom: 12 }}>{error}</div>}
+        {items.length === 0 ? (
+          <div className="empty">还没有待上传文件。</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>文件</th>
+                <th>状态</th>
+                <th>进度</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <div>{item.name}</div>
+                    <div className="muted mono">{item.size} bytes</div>
+                    {item.error && (
+                      <div className="muted" style={{ fontSize: 12 }}>{item.error}</div>
+                    )}
+                  </td>
+                  <td>
+                    <span className={`badge ${item.status}`}>{item.status}</span>
+                  </td>
+                  <td>
+                    <div className="row" style={{ gap: 8 }}>
+                      <div className="progress" style={{ flex: 1 }}>
+                        <span style={{ width: `${progress(item)}%` }} />
+                      </div>
+                      <span className="muted mono">{progress(item)}%</span>
+                    </div>
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <button
+                      className="btn"
+                      onClick={() => void runOne(item)}
+                      disabled={busy !== "" || item.status === "done"}
+                    >
+                      {item.status === "paused" ? "继续" : "上传"}
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => void remove(item)}
+                      disabled={busy === item.id}
+                    >
+                      移除
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
-        {error && <div className="error" style={{ marginTop: 12 }}>{error}</div>}
       </section>
 
-      {asset && (
+      {done.length > 0 && (
         <section className="card">
-          <h2>资产已登记</h2>
-          <p className="hint">
-            {asset.original_name} · {asset.size} bytes ·{" "}
-            <span className="mono">{asset.id.slice(0, 12)}</span>
-          </p>
+          <h2>创建打包任务</h2>
+          <p className="hint">选择一个已完成上传的资产，按目标时间生成交付 ZIP。</p>
           <div className="grid-2">
             <div className="media-preview">
-              {previewReady ? (
+              {selectedItem && previewReady ? (
                 <img
-                  src={api.previewUrl(asset.id)}
-                  alt={asset.original_name}
+                  src={api.previewUrl(selectedItem.assetId!, "thumb")}
+                  alt={selectedItem.name}
                   onError={() => setPreviewReady(false)}
                 />
               ) : (
-                <span className="muted">该格式暂不支持预览</span>
+                <span className="muted">选择资产后显示预览</span>
               )}
             </div>
             <div className="stack">
               <div className="field">
-                <label htmlFor="target">目标完成时间（本地时区 {timezone}）</label>
+                <label htmlFor="asset">资产</label>
+                <select
+                  id="asset"
+                  value={selected}
+                  onChange={(event) => {
+                    setSelected(event.target.value);
+                    setPreviewReady(true);
+                  }}
+                >
+                  <option value="">请选择</option>
+                  {done.map((item) => (
+                    <option key={item.assetId} value={item.assetId}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="target">目标完成时间（{timezone}）</label>
                 <input
                   id="target"
                   type="datetime-local"
@@ -146,13 +295,15 @@ export function UploadPage() {
                 <button
                   className="btn btn-primary"
                   onClick={() => void createJob()}
-                  disabled={pending}
+                  disabled={!selected || busy !== ""}
                 >
-                  创建打包任务
+                  {busy === "job" ? "创建中…" : "创建任务"}
                 </button>
-                <a className="btn" href={api.downloadUrl(asset.id)}>
-                  下载资产
-                </a>
+                {selectedItem && (
+                  <a className="btn" href={api.downloadUrl(selectedItem.assetId!)}>
+                    下载资产
+                  </a>
+                )}
               </div>
               {job && (
                 <div className="success">

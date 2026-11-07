@@ -144,6 +144,10 @@ export const api = {
         media_type: mediaType || "application/octet-stream",
       }),
     }),
+  getUpload: (id: string) =>
+    request<{ id: string; offset: number; size: number; status?: string }>(
+      `/api/v1/uploads/${id}`,
+    ),
   appendChunk: async (id: string, offset: number, chunk: Blob) => {
     const response = await fetch(`/api/v1/uploads/${id}`, {
       method: "PATCH",

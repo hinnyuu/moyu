@@ -25,12 +25,13 @@ app/
 │  ├─ main.tsx
 │  ├─ App.tsx          # 会话、导航、主题
 │  ├─ api.ts           # fetch 客户端、CSRF、错误模型
+│  ├─ queue.ts         # 批量队列、IndexedDB 缓存、断点续传
 │  ├─ theme.ts         # system/light/dark 解析与持久化
 │  ├─ styles.css       # design tokens + 组件样式
 │  └─ pages/
 │     ├─ Login.tsx     # bootstrap token / 密码登录
 │     ├─ Jobs.tsx      # 任务列表、进度、取消
-│     ├─ Upload.tsx    # 分片上传、预览、创建任务
+│     ├─ Upload.tsx    # 批量队列、暂停/恢复、预览、创建任务
 │     └─ Settings.tsx  # 配置 JSON 编辑与 revision
 ├─ package.json
 └─ vite.config.ts
@@ -58,7 +59,7 @@ app/
 
 - 登录：未初始化时显示 bootstrap token + 设置密码；已初始化时只显示密码。
 - 任务：每 5 秒轮询，显示状态/进度/错误，可取消未完成任务。
-- 上传：分片 8MiB，显示进度；完成后显示预览与下载；可创建打包任务。
+- 上传：多文件队列、分片 8MiB、IndexedDB 缓存、刷新后按服务器偏移量续传、暂停/恢复；完成后可选择资产创建打包任务。
 - 配置：按模块编辑 JSON，保存时带 revision；显示 LKG 降级警告。
 
 ## 配置
@@ -84,14 +85,15 @@ npm run build
 已验证：
 
 - `npm run typecheck` 通过；
-- `npm run build` 通过（35 modules，dist 生成）；
+- `npm run build` 通过；
+- `npm test`（Vitest）4 个队列测试：新建上传、断点续传、暂停、错误传播；
 - 构建产物由 API 静态挂载后可访问（首页、JS、CSS 均为 200）。
 
 尚未完成：
 
 - Playwright 浏览器 E2E（当前沙箱 Chromium 下载受限）；
 - 亮/暗主题视觉回归截图基线；
-- 组件单测与批量队列。
+- Playwright 浏览器 E2E。
 
 ## 替换点
 

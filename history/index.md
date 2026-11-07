@@ -35,6 +35,7 @@
 - [2026-11-06 preview 独立服务与容器](commits/2026-11-06-preview-service-container.md)
 - [2026-11-06 tusd 容器与内部完成钩子](commits/2026-11-06-tusd-integration.md)
 - [2026-11-06 修复 tusd 镜像构建解压路径](commits/2026-11-06-fix-tusd-build.md)
+- [2026-11-06 Web 批量队列与断点续传](commits/2026-11-06-web-batch-resume.md)
 
 ## 决策记录（ADR）
 
