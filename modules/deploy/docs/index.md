@@ -103,6 +103,18 @@ python3 modules/deploy/scripts/process_e2e.py
 
 - 未实现 GHCR 发布 workflow、SBOM/漏洞扫描、升级/回滚脚本。
 
+## 发布
+
+打 `v*` 标签触发 `.github/workflows/release.yml`：
+
+1. 构建单镜像；
+2. 推送 GHCR：`:<tag>`、`:sha-<12位>`、`:latest`；
+3. Syft 生成 SPDX SBOM；
+4. Trivy 生成表格与 SARIF 报告；
+5. SBOM 与扫描报告附加到 GitHub Release。
+
+当前仅构建 amd64；aarch64 需在对应 runner/构建机执行。未实现镜像签名。
+
 ## 失败模式
 
 端口冲突、卷权限、SELinux、IPv6、证书错误、镜像升级、缺少 secret、上游地址错误。

@@ -37,6 +37,7 @@
 - [2026-11-06 修复 tusd 镜像构建解压路径](commits/2026-11-06-fix-tusd-build.md)
 - [2026-11-06 Web 批量队列与断点续传](commits/2026-11-06-web-batch-resume.md)
 - [2026-11-06 Web WASM 接入与镜像产物](commits/2026-11-06-web-wasm-integration.md)
+- [2026-11-06 GHCR 发布与供应链报告](commits/2026-11-06-release-supply-chain.md)
 
 ## 决策记录（ADR）
 

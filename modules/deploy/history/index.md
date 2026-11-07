@@ -11,3 +11,4 @@
 - [2026-11-06 tusd 容器](2026-11-06-tusd-container.md)
 - [2026-11-06 修复 tusd 构建路径](2026-11-06-fix-tusd-build.md)
 - [2026-11-06 镜像增加 WASM 构建阶段](2026-11-06-wasm-stage.md)
+- [2026-11-06 发布与供应链](2026-11-06-release-supply-chain.md)
