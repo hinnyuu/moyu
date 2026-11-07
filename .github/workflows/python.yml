@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python3 -m pip install pyyaml pillow jsonschema fastapi httpx
+      - run: python3 -m pip install pyyaml pillow jsonschema fastapi httpx uvicorn
       - name: Run module tests
         run: |
           set -e
@@ -24,3 +24,5 @@ jobs:
             echo "== $tests =="
             python3 -m unittest discover -s "$tests" -v
           done
+      - name: Process end-to-end
+        run: python3 modules/deploy/scripts/process_e2e.py
